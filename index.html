@@ -1575,16 +1575,14 @@ function statusActionsHtml(s) {
   if (s.status === "pending") return `
     <button class="btn btn-primary" data-action="approve">Approve school</button>
     <button class="btn btn-danger" data-action="reject">Reject &amp; delete</button>`;
-  if (s.status === "active") return `
-    <button class="btn btn-ghost" data-action="suspend">Suspend</button>
-    <button class="btn btn-ghost" data-action="deactivate">Deactivate</button>
-    <button class="btn btn-danger" data-action="delete">Delete</button>`;
-  if (s.status === "suspended") return `
-    <button class="btn btn-primary" data-action="reactivate">Reactivate</button>
-    <button class="btn btn-ghost" data-action="deactivate">Deactivate</button>
-    <button class="btn btn-danger" data-action="delete">Delete</button>`;
+  // Suspend and Deactivate are independent toggles, not a shared "Reactivate":
+  // each button reflects and flips just its own half of the status, so an
+  // admin can tell at a glance which state a school is in and undo just that.
+  const isSuspended = s.status === "suspended";
+  const isDeactivated = s.status === "deactivated";
   return `
-    <button class="btn btn-primary" data-action="reactivate">Reactivate</button>
+    <button class="btn ${isSuspended ? 'btn-primary' : 'btn-ghost'}" data-action="toggle-suspend">${isSuspended ? "Unsuspend" : "Suspend"}</button>
+    <button class="btn ${isDeactivated ? 'btn-primary' : 'btn-ghost'}" data-action="toggle-deactivate">${isDeactivated ? "Activate" : "Deactivate"}</button>
     <button class="btn btn-danger" data-action="delete">Delete</button>`;
 }
 
@@ -1621,8 +1619,8 @@ async function renderSchoolDetail() {
   wireTopBar();
   wireSubTabs("schooltab", (id) => { schoolSubTab = id; render(); });
 
-  // Status actions (approve / suspend / reactivate / deactivate) — always
-  // visible above the tabs since they apply to the whole school record.
+  // Status actions (approve / reject / suspend-toggle / deactivate-toggle / delete) —
+  // always visible above the tabs since they apply to the whole school record.
   app().querySelectorAll("[data-action]").forEach(btn => {
     btn.onclick = async () => {
       const action = btn.dataset.action;
@@ -1639,11 +1637,14 @@ async function renderSchoolDetail() {
           schoolSubTab = "danger";
           render();
           return;
-        } else if (action === "suspend") { await setSchoolStatus(s.id, "suspended"); }
-        else if (action === "reactivate") { await setSchoolStatus(s.id, "active"); }
-        else if (action === "deactivate") {
-          if (!confirm("Deactivate this school? Its accounts will no longer be able to log in.")) return;
-          await setSchoolStatus(s.id, "deactivated");
+        } else if (action === "toggle-suspend") {
+          await setSchoolStatus(s.id, s.status === "suspended" ? "active" : "suspended");
+        } else if (action === "toggle-deactivate") {
+          if (s.status === "deactivated") { await setSchoolStatus(s.id, "active"); }
+          else {
+            if (!confirm("Deactivate this school? Its accounts will no longer be able to log in.")) return;
+            await setSchoolStatus(s.id, "deactivated");
+          }
         }
         renderSchoolDetail();
       } catch(e) { msg.innerHTML = `<div class="err">${e.message}</div>`; }
