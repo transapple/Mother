@@ -22,7 +22,7 @@
   }
   *{box-sizing:border-box;}
   body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased;}
-  .wrap{max-width:720px;margin:0 auto;padding:18px 16px 60px;}
+  .wrap{max-width:720px;margin:0 auto;padding:18px 16px calc(86px + env(safe-area-inset-bottom,0px));}
 
   /* ---- Top bar / brand / account chip ---- */
   .topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:10px;}
@@ -33,13 +33,13 @@
   .acct-avatar{width:24px;height:24px;border-radius:50%;background:var(--accent);color:#fff;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
   .acct-name{font-size:12.5px;font-weight:700;color:var(--navy-2);max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 
-  /* ---- Primary nav (workspace tabs) ---- */
-  .tabrail{display:flex;gap:6px;overflow-x:auto;padding:4px 2px 12px;margin-bottom:8px;-ms-overflow-style:none;scrollbar-width:none;}
+  /* ---- Primary nav (workspace tabs) — fixed bottom bar ---- */
+  .tabrail{position:fixed;left:0;right:0;bottom:0;display:flex;gap:2px;overflow-x:auto;padding:6px 6px calc(6px + env(safe-area-inset-bottom,0px));margin:0;background:var(--card);border-top:1px solid var(--line);box-shadow:0 -6px 20px -10px rgba(20,23,35,.18);z-index:100;-ms-overflow-style:none;scrollbar-width:none;}
   .tabrail::-webkit-scrollbar{display:none;}
-  .tab-pill{flex:0 0 auto;display:flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--card);color:var(--ink-soft);font-size:12.5px;font-weight:700;padding:8px 13px;border-radius:99px;cursor:pointer;white-space:nowrap;transition:all .15s ease;}
-  .tab-pill:hover{border-color:var(--accent);color:var(--navy);}
-  .tab-pill.is-active{background:var(--navy);border-color:var(--navy);color:#fff;}
-  .tab-pill .icon svg{width:14px;height:14px;}
+  .tab-pill{flex:1 0 auto;min-width:58px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;border:none;background:transparent;color:var(--ink-soft);font-size:10.5px;font-weight:700;padding:7px 4px;border-radius:12px;cursor:pointer;white-space:nowrap;transition:all .15s ease;}
+  .tab-pill:hover{color:var(--navy);}
+  .tab-pill.is-active{background:var(--accent-tint);color:var(--accent-dark);}
+  .tab-pill .icon svg{width:19px;height:19px;}
 
   /* ---- Secondary nav (within a school / settings) ---- */
   .subtabrail{display:flex;gap:6px;overflow-x:auto;background:var(--surface-2);border:1px solid var(--line);border-radius:99px;padding:4px;margin-bottom:16px;-ms-overflow-style:none;scrollbar-width:none;}
@@ -65,6 +65,18 @@
   .field input,.field select{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:var(--radius-sm);font-size:14px;background:var(--surface-2);color:var(--ink);transition:border-color .15s ease,background .15s ease;}
   .field input:focus,.field select:focus{outline:none;border-color:var(--accent);background:#fff;}
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+
+  /* ---- Toggle switch (feature/module on-off) ---- */
+  .toggle-switch{position:relative;display:inline-flex;align-items:center;width:42px;height:24px;flex-shrink:0;cursor:pointer;}
+  .toggle-switch input{position:absolute;inset:0;opacity:0;margin:0;cursor:pointer;z-index:2;}
+  .toggle-slider{position:absolute;inset:0;background:var(--slate-tint);border:1px solid var(--line);border-radius:99px;transition:background .18s ease,border-color .18s ease;}
+  .toggle-slider::before{content:"";position:absolute;top:2px;left:2px;width:18px;height:18px;background:#fff;border-radius:50%;box-shadow:0 1px 3px rgba(20,23,35,.25);transition:transform .18s ease;}
+  .toggle-switch input:checked + .toggle-slider{background:var(--teal);border-color:var(--teal-dark);}
+  .toggle-switch input:checked + .toggle-slider::before{transform:translateX(18px);}
+  .toggle-switch input:focus-visible + .toggle-slider{outline:2px solid var(--accent);outline-offset:2px;}
+  .toggle-switch input:disabled + .toggle-slider{opacity:.5;cursor:not-allowed;}
+  .toggle-row{display:flex;align-items:center;gap:9px;}
+  .toggle-state{font-size:12.5px;color:var(--ink-soft);font-weight:700;min-width:54px;text-align:right;}
 
   /* ---- Buttons ---- */
   .btn{border:none;border-radius:var(--radius-sm);padding:11px 16px;font-size:13.5px;font-weight:700;cursor:pointer;transition:filter .15s ease,background .15s ease;}
@@ -100,8 +112,11 @@
 
   /* ---- Tables ---- */
   .mini-table{width:100%;border-collapse:collapse;font-size:12.5px;}
-  .mini-table th{text-align:left;color:var(--ink-soft);font-weight:700;padding:8px 6px;border-bottom:1px solid var(--line);font-size:11px;text-transform:uppercase;letter-spacing:.02em;}
-  .mini-table td{padding:8px 6px;border-bottom:1px solid var(--line);}
+  .mini-table th{text-align:left;color:var(--ink-soft);font-weight:700;padding:8px 6px;border-bottom:1px solid var(--line);font-size:11px;text-transform:uppercase;letter-spacing:.02em;white-space:nowrap;}
+  .mini-table td{padding:8px 6px;border-bottom:1px solid var(--line);white-space:nowrap;}
+  .table-scroll{overflow-x:auto;max-width:100%;-webkit-overflow-scrolling:touch;margin:0 -2px;}
+  .table-scroll .mini-table{min-width:480px;}
+  .table-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:10px;}
 
   /* ---- Nav / status links ---- */
   .back-link{color:var(--accent-dark);font-weight:700;cursor:pointer;font-size:13px;display:inline-flex;align-items:center;gap:4px;margin-bottom:12px;}
@@ -797,8 +812,13 @@ let currentSchoolId = null;
 let schoolSubTab = "subscription"; // "subscription", "features", "admins", "danger"
 let schoolDangerNotice = null; // one-shot message shown when redirected into the Danger Zone tab
 let settingsSubTab = "account"; // "account", "admins", "database"
+const LOG_PAGE_SIZE = 10; // default number of rows shown before "Show all"
+let auditLogItems = [];
+let auditLogShowAll = false;
+let loginActivityItems = [];
+let loginActivityShowAll = false;
 const SCHOOL_TABS = [["subscription","Subscription","subscription"],["features","Features & Modules","features"],["admins","Administrators","admins"],["danger","Danger Zone","danger",true]];
-const SETTINGS_TABS = [["account","Account","account"],["admins","Admins","admins"],["database","Database","database"]];
+const SETTINGS_TABS = [["account","Account","account"],["plans","Plans & Features","subscription"],["admins","Admins","admins"],["database","Database","database"]];
 
 function daysUntil(dateStr) {
   if (!dateStr) return null;
@@ -876,6 +896,20 @@ async function listAuditLog(limit) {
 }
 async function listLoginLog(limit) {
   return sb(`/rest/v1/mother_login_log?${qs({select:"*", order:"created_at.desc", limit: limit || 50})}`);
+}
+// Clearing a log requires full access. Uses a "created before right now"
+// filter (PostgREST requires some filter on DELETE) so every existing row
+// qualifies. The audit log intentionally logs its own clearing — a fresh
+// entry survives to record who wiped it and when.
+async function clearAuditLog() {
+  assertFullAccess();
+  await sb(`/rest/v1/audit_log?created_at=lte.${encodeURIComponent(new Date().toISOString())}`, { method:"DELETE" });
+  logAudit("clear_audit_log", "audit_log", null, null);
+}
+async function clearLoginLog() {
+  assertFullAccess();
+  await sb(`/rest/v1/mother_login_log?created_at=lte.${encodeURIComponent(new Date().toISOString())}`, { method:"DELETE" });
+  logAudit("clear_login_log", "mother_login_log", null, null);
 }
 async function listMotherAdmins() {
   const rows = await sb(`/rest/v1/rpc/list_mother_admins`, { method:"POST", body: JSON.stringify({}) });
@@ -1350,6 +1384,7 @@ function renderSettings() {
 
   if (settingsSubTab === "admins") renderSettingsAdminsTab();
   else if (settingsSubTab === "database") renderSettingsDatabaseTab();
+  else if (settingsSubTab === "plans") renderSettingsPlansTab();
   else renderSettingsAccountTab();
 }
 
@@ -1410,6 +1445,48 @@ function renderSettingsAdminsTab() {
   };
 }
 
+// Read-only comparison matrix: built straight from PLAN_OPTIONS, FEATURE_MODULES
+// and PLAN_FEATURE_DEFAULTS, so it can never drift out of sync with what
+// "Apply defaults for plan…" actually sets on a school's Features tab. This
+// shows *defaults only* — a given school's live features can still differ
+// if a mother admin hand-toggled a module (see that school's Features tab).
+function renderSettingsPlansTab() {
+  const mount = document.getElementById("settingsTabContent");
+  const check = `<span style="color:var(--teal-dark);font-weight:800;">✓</span>`;
+  const cross = `<span style="color:var(--slate);">—</span>`;
+  mount.innerHTML = `
+    <div class="card">
+      <div class="section-title">Plans &amp; feature matrix</div>
+      <div class="tiny-note" style="margin-bottom:12px;">What each plan turns on by default when applied from a school's Features &amp; Modules tab. This is a reference view only — nothing here is editable. A school's actual access is whatever is saved on its own Features tab, which can be hand-adjusted per school regardless of plan.</div>
+      <div class="table-scroll"><table class="mini-table">
+        <thead><tr>
+          <th>Module</th>
+          ${PLAN_OPTIONS.map(p => `<th>${p}</th>`).join("")}
+        </tr></thead>
+        <tbody>
+          ${FEATURE_MODULES.map(m => `
+            <tr>
+              <td style="white-space:normal;font-weight:700;color:var(--navy);">${m.label}</td>
+              ${PLAN_OPTIONS.map(p => {
+                const defaults = PLAN_FEATURE_DEFAULTS[p] || {};
+                const on = defaults[m.id] === true;
+                return `<td style="text-align:center;">${on ? check : cross}</td>`;
+              }).join("")}
+            </tr>`).join("")}
+        </tbody>
+      </table></div>
+      <hr class="divider" />
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        ${PLAN_OPTIONS.map(p => `
+          <div class="row" style="align-items:flex-start;gap:8px;">
+            <span class="badge badge-deactivated" style="flex-shrink:0;">${p}</span>
+            <span class="tiny-note" style="margin:0;">${PLAN_DESCRIPTIONS[p] || ""}</span>
+          </div>`).join("")}
+      </div>
+      <div class="tiny-note" style="margin-top:12px;">Home, Account, Settings and Trash aren't listed here — every school always has those, on every plan.</div>
+    </div>`;
+}
+
 function renderSettingsDatabaseTab() {
   const mount = document.getElementById("settingsTabContent");
   mount.innerHTML = `
@@ -1439,7 +1516,16 @@ function renderSettingsDatabaseTab() {
     </div>`;
 }
 
-const PLAN_OPTIONS = ["Trial","Basic","Standard","Premium","Custom"];
+// Exactly these four categories — no "Custom" plan tier. A school's modules
+// can still be hand-toggled from the Features tab regardless of which of
+// these four plans it's on, so a separate "Custom" plan name isn't needed.
+const PLAN_OPTIONS = ["Trial","Basic","Standard","Premium"];
+const PLAN_DESCRIPTIONS = {
+  Trial:    "Free — basic features for evaluation.",
+  Basic:    "Paid — essential school management features.",
+  Standard: "Paid — extended features with additional capabilities.",
+  Premium:  "Paid — full access to all modules and features.",
+};
 const CYCLE_OPTIONS = [["monthly","Monthly"],["termly","Termly"],["yearly","Yearly"]];
 const METHOD_OPTIONS = [["cash","Cash"],["bank","Bank transfer"],["mobile_money","Mobile Money"],["cheque","Cheque"],["other","Other"]];
 
@@ -1462,19 +1548,27 @@ const FEATURE_MODULES = [
   { id: "academic",   label: "Setup (terms/classes/subjects)" },
   { id: "comms",      label: "Comms (announcements/meetings)" },
 ];
-// What a fresh plan turns on by default. "Custom" has no defaults — an admin
-// picks each module by hand for that school. Applying defaults always
-// produces a FULLY-SPECIFIED map (every module id set true or false), so the
-// school app never has to guess — only truly unconfigured schools (features
-// still `{}`) fall back to "everything on".
+// What a fresh plan turns on by default. Each tier is a strict superset of
+// the one below it, so Premium is the only plan with every module on — as
+// described in the plan list. Applying defaults always produces a
+// FULLY-SPECIFIED map (every module id set true or false), so the school app
+// never has to guess — only truly unconfigured schools (features still `{}`)
+// fall back to "everything on". An admin can still hand-toggle any module
+// afterward regardless of plan — these are just starting points.
 const PLAN_FEATURE_DEFAULTS = {
+  // Trial (Free): just enough to evaluate the core workflow — enrollment,
+  // staff records, attendance.
   Trial:    { students:true, teachers:true, attendance:true, health:false, fees:false, exams:false, academic:false, comms:false },
+  // Basic (Paid): adds the day-to-day essentials — fees, term/class setup,
+  // parent comms.
   Basic:    { students:true, teachers:true, attendance:true, health:false, fees:true,  exams:false, academic:true,  comms:true  },
-  Standard: { students:true, teachers:true, attendance:true, health:true,  fees:true,  exams:true,  academic:true,  comms:true  },
+  // Standard (Paid): adds exams/report cards on top of Basic.
+  Standard: { students:true, teachers:true, attendance:true, health:false, fees:true,  exams:true,  academic:true,  comms:true  },
+  // Premium (Paid): full access to every module, including School Health.
   Premium:  { students:true, teachers:true, attendance:true, health:true,  fees:true,  exams:true,  academic:true,  comms:true  },
 };
 function planDefaultFeatures(plan) {
-  return PLAN_FEATURE_DEFAULTS[plan] || null; // null for "Custom"/no plan — caller decides fallback
+  return PLAN_FEATURE_DEFAULTS[plan] || null; // null for an unrecognized/no plan — caller decides fallback
 }
 
 function statusActionsHtml(s) {
@@ -1572,7 +1666,8 @@ function renderSchoolSubscriptionTab(s) {
         <div class="field"><label>Plan</label>
           <select id="planSelect">
             <option value="">— None —</option>
-            ${PLAN_OPTIONS.map(p=>`<option value="${p}" ${s.plan===p?'selected':''}>${p}</option>`).join("")}
+            ${PLAN_OPTIONS.map(p=>`<option value="${p}" ${s.plan===p?'selected':''}>${p} — ${PLAN_DESCRIPTIONS[p]}</option>`).join("")}
+            ${s.plan && !PLAN_OPTIONS.includes(s.plan) ? `<option value="${s.plan}" selected>${s.plan} (legacy — pick a current plan to replace it)</option>` : ""}
           </select>
         </div>
         <div class="field"><label>Billing cycle</label>
@@ -1639,11 +1734,12 @@ function renderSchoolFeaturesTab(s) {
     <div class="card">
       <div class="section-title">Features &amp; modules</div>
       <div class="tiny-note" style="margin-bottom:10px;">Choose which sections this school can see and use. Students, Fees and Comms also control the matching tab in parents' own app (My Children, Fees, Notifications) — everything else here is staff-only. Changes take effect automatically — usually within a minute, or as soon as they reopen the app — no re-login needed.</div>
+      ${s.plan ? `<div class="tiny-note" style="margin-bottom:10px;">Current plan: <strong>${s.plan}</strong>${PLAN_DESCRIPTIONS[s.plan] ? ` — ${PLAN_DESCRIPTIONS[s.plan]}` : ""}</div>` : ""}
       <div id="featuresMsg"></div>
       <div class="row" style="margin-bottom:10px;flex-wrap:wrap;">
         <select id="featurePlanDefault" style="flex:1;min-width:180px;">
           <option value="">Apply defaults for plan…</option>
-          ${PLAN_OPTIONS.filter(p=>p!=="Custom").map(p=>`<option value="${p}">${p}</option>`).join("")}
+          ${PLAN_OPTIONS.map(p=>`<option value="${p}">${p} — ${PLAN_DESCRIPTIONS[p]}</option>`).join("")}
         </select>
         <button class="btn btn-ghost btn-sm" id="applyPlanDefaultsBtn">Apply</button>
       </div>
@@ -1651,7 +1747,13 @@ function renderSchoolFeaturesTab(s) {
         ${FEATURE_MODULES.map(m => {
           const on = (s.features && Object.prototype.hasOwnProperty.call(s.features, m.id)) ? s.features[m.id] !== false : true;
           return `<div class="admin-row"><div style="font-weight:600;">${m.label}</div>
-            <label class="row" style="gap:6px;"><input type="checkbox" data-feature="${m.id}" ${on?'checked':''}/> <span class="tiny-note">${on?'Enabled':'Disabled'}</span></label>
+            <div class="toggle-row" data-feature-row="${m.id}">
+              <span class="toggle-state">${on?'Enabled':'Disabled'}</span>
+              <label class="toggle-switch">
+                <input type="checkbox" data-feature="${m.id}" ${on?'checked':''}/>
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
           </div>`;
         }).join("")}
       </div>
@@ -1659,8 +1761,14 @@ function renderSchoolFeaturesTab(s) {
     </div>`;
 
   const featureBox = document.getElementById("featureToggles");
+  const setToggleState = (cb, on) => {
+    cb.checked = on;
+    const row = cb.closest("[data-feature-row]");
+    const stateEl = row ? row.querySelector(".toggle-state") : null;
+    if (stateEl) stateEl.textContent = on ? "Enabled" : "Disabled";
+  };
   featureBox.querySelectorAll("[data-feature]").forEach(cb => {
-    cb.onchange = () => { cb.nextElementSibling.textContent = cb.checked ? "Enabled" : "Disabled"; };
+    cb.onchange = () => setToggleState(cb, cb.checked);
   });
   document.getElementById("applyPlanDefaultsBtn").onclick = () => {
     const plan = document.getElementById("featurePlanDefault").value;
@@ -1669,8 +1777,7 @@ function renderSchoolFeaturesTab(s) {
     featureBox.querySelectorAll("[data-feature]").forEach(cb => {
       const id = cb.dataset.feature;
       const on = Object.prototype.hasOwnProperty.call(defaults, id) ? defaults[id] !== false : true;
-      cb.checked = on;
-      cb.nextElementSibling.textContent = on ? "Enabled" : "Disabled";
+      setToggleState(cb, on);
     });
     document.getElementById("featuresMsg").innerHTML = `<div class="msg-ok">${plan} defaults applied below — click "Save features" to make it live.</div>`;
   };
@@ -2177,6 +2284,8 @@ function roleBadge(role) {
 }
 
 async function renderSecurity() {
+  loginActivityShowAll = false;
+  auditLogShowAll = false;
   app().innerHTML = `
     <div class="wrap">
       ${topBarHtml()}
@@ -2259,40 +2368,86 @@ async function loadAdminAccounts() {
 async function loadLoginActivity() {
   const el = document.getElementById("loginActivityList");
   try {
-    const items = await listLoginLog(50);
-    if (!items.length) { el.innerHTML = `<div class="empty">No login activity yet.</div>`; return; }
-    // Flag a username as suspicious if it has 3+ failed attempts within the last 15 minutes.
-    const now = Date.now();
-    const recentFailuresByUser = {};
-    items.forEach(r => {
-      if (!r.success && (now - new Date(r.created_at).getTime()) < 15*60000) {
-        recentFailuresByUser[r.username] = (recentFailuresByUser[r.username]||0) + 1;
-      }
-    });
-    el.innerHTML = `<table class="mini-table"><thead><tr><th>When</th><th>Username</th><th>Result</th></tr></thead><tbody>
-      ${items.map(r => `<tr>
+    loginActivityItems = await listLoginLog(500);
+    renderLoginActivityList();
+  } catch(e) { el.innerHTML = `<div class="err">${e.message}</div>`; }
+}
+function renderLoginActivityList() {
+  const el = document.getElementById("loginActivityList");
+  if (!loginActivityItems.length) { el.innerHTML = `<div class="empty">No login activity yet.</div>`; return; }
+  // Flag a username as suspicious if it has 3+ failed attempts within the last 15 minutes.
+  const now = Date.now();
+  const recentFailuresByUser = {};
+  loginActivityItems.forEach(r => {
+    if (!r.success && (now - new Date(r.created_at).getTime()) < 15*60000) {
+      recentFailuresByUser[r.username] = (recentFailuresByUser[r.username]||0) + 1;
+    }
+  });
+  const shown = loginActivityShowAll ? loginActivityItems : loginActivityItems.slice(0, LOG_PAGE_SIZE);
+  el.innerHTML = `
+    <div class="table-scroll"><table class="mini-table"><thead><tr><th>When</th><th>Username</th><th>Result</th></tr></thead><tbody>
+      ${shown.map(r => `<tr>
         <td>${new Date(r.created_at).toLocaleString()}</td>
         <td>${r.username}${recentFailuresByUser[r.username] >= 3 ? ' <span class="badge badge-suspended">Suspicious</span>' : ''}</td>
         <td>${r.success ? '<span class="badge badge-active">Success</span>' : '<span class="badge badge-suspended">Failed</span>'}</td>
       </tr>`).join("")}
-    </tbody></table>`;
-  } catch(e) { el.innerHTML = `<div class="err">${e.message}</div>`; }
+    </tbody></table></div>
+    <div class="table-foot">
+      <span>${loginActivityItems.length > LOG_PAGE_SIZE ? `<span class="link-btn" id="loginActivityToggle">${loginActivityShowAll ? "Show latest 10" : `Show all (${loginActivityItems.length})`}</span>` : ""}</span>
+      ${isFullAccess() ? `<button class="btn btn-danger btn-sm" id="clearLoginActivityBtn">Clear login activity</button>` : ""}
+    </div>
+    <div id="loginActivityMsg"></div>`;
+  const toggle = document.getElementById("loginActivityToggle");
+  if (toggle) toggle.onclick = () => { loginActivityShowAll = !loginActivityShowAll; renderLoginActivityList(); };
+  const clearBtn = document.getElementById("clearLoginActivityBtn");
+  if (clearBtn) clearBtn.onclick = async () => {
+    if (!confirm("Clear all login activity? This can't be undone.")) return;
+    const msg = document.getElementById("loginActivityMsg");
+    try {
+      await clearLoginLog();
+      loginActivityShowAll = false;
+      await loadLoginActivity();
+    } catch(e) { msg.innerHTML = `<div class="err">${e.message}</div>`; }
+  };
 }
 
 async function loadAuditLogList() {
   const el = document.getElementById("auditLogList");
   try {
-    const items = await listAuditLog(50);
-    if (!items.length) { el.innerHTML = `<div class="empty">No audit entries yet.</div>`; return; }
-    el.innerHTML = `<table class="mini-table"><thead><tr><th>When</th><th>Admin</th><th>Action</th><th>Details</th></tr></thead><tbody>
-      ${items.map(r => `<tr>
+    auditLogItems = await listAuditLog(500);
+    renderAuditLogList();
+  } catch(e) { el.innerHTML = `<div class="err">${e.message}</div>`; }
+}
+function renderAuditLogList() {
+  const el = document.getElementById("auditLogList");
+  if (!auditLogItems.length) { el.innerHTML = `<div class="empty">No audit entries yet.</div>`; return; }
+  const shown = auditLogShowAll ? auditLogItems : auditLogItems.slice(0, LOG_PAGE_SIZE);
+  el.innerHTML = `
+    <div class="table-scroll"><table class="mini-table"><thead><tr><th>When</th><th>Admin</th><th>Action</th><th>Details</th></tr></thead><tbody>
+      ${shown.map(r => `<tr>
         <td>${new Date(r.created_at).toLocaleString()}</td>
         <td>${r.actor_username || '—'}</td>
         <td>${r.action}${r.target_type ? ` (${r.target_type})` : ''}</td>
         <td>${r.details || ''}</td>
       </tr>`).join("")}
-    </tbody></table>`;
-  } catch(e) { el.innerHTML = `<div class="err">${e.message}</div>`; }
+    </tbody></table></div>
+    <div class="table-foot">
+      <span>${auditLogItems.length > LOG_PAGE_SIZE ? `<span class="link-btn" id="auditLogToggle">${auditLogShowAll ? "Show latest 10" : `Show all (${auditLogItems.length})`}</span>` : ""}</span>
+      ${isFullAccess() ? `<button class="btn btn-danger btn-sm" id="clearAuditLogBtn">Clear audit log</button>` : ""}
+    </div>
+    <div id="auditLogMsg"></div>`;
+  const toggle = document.getElementById("auditLogToggle");
+  if (toggle) toggle.onclick = () => { auditLogShowAll = !auditLogShowAll; renderAuditLogList(); };
+  const clearBtn = document.getElementById("clearAuditLogBtn");
+  if (clearBtn) clearBtn.onclick = async () => {
+    if (!confirm("Clear the entire audit log? This can't be undone.")) return;
+    const msg = document.getElementById("auditLogMsg");
+    try {
+      await clearAuditLog();
+      auditLogShowAll = false;
+      await loadAuditLogList();
+    } catch(e) { msg.innerHTML = `<div class="err">${e.message}</div>`; }
+  };
 }
 
 function render() {
@@ -2306,6 +2461,19 @@ function render() {
   else if (view === "security") renderSecurity();
   else renderDashboard();
 }
+/* ---------------- Keyboard-aware form scrolling ----------------
+   Every screen in this app is re-rendered via innerHTML, so fields are
+   created/destroyed constantly — a single delegated listener on document
+   covers all of them, present and future, instead of wiring each form. */
+document.addEventListener("focusin", (e) => {
+  const t = e.target;
+  if (t.matches && t.matches("input, select, textarea")) {
+    setTimeout(() => {
+      t.scrollIntoView({ block: "center", behavior: "smooth" });
+    }, 300); // gives the mobile keyboard time to finish animating in
+  }
+});
+
 (async () => {
   await tryRestoreMotherSession();
   render();
