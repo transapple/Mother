@@ -1,0 +1,2484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Nova Mother App</title>
+<style>
+  :root{
+    /* Ink & neutrals */
+    --navy:#161A26; --navy-2:#2A2F42; --ink:#1A1D27; --ink-soft:#666C7D;
+    --slate:#8A90A0; --slate-tint:#EEF0F5; --line:#E4E7EE;
+    --bg:#F2F3F7; --card:#FFFFFF; --surface-2:#F7F8FB;
+    /* Accent (primary actions, active nav) — cool azure, distinct from status colors */
+    --accent:#3457D5; --accent-dark:#28439E; --accent-tint:#EAEFFD;
+    /* Status semantics */
+    --teal:#1C9A6C; --teal-dark:#157A56; --teal-tint:#E3F6EC;
+    --red:#D8433B; --red-dark:#B33831; --red-tint:#FCEAE9;
+    --amber:#B8790F; --amber-tint:#FCF1DC;
+    --radius:14px; --radius-sm:10px;
+    --shadow-sm:0 1px 2px rgba(20,23,35,.04);
+    --shadow-md:0 10px 28px -14px rgba(20,23,35,.22);
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased;}
+  .wrap{max-width:720px;margin:0 auto;padding:18px 16px calc(86px + env(safe-area-inset-bottom,0px));}
+
+  /* ---- Top bar / brand / account chip ---- */
+  .topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:10px;}
+  .brand{font-weight:800;font-size:18px;letter-spacing:-.01em;color:var(--navy);}
+  .brand span{color:var(--accent);}
+  .acct-chip{display:flex;align-items:center;gap:8px;cursor:pointer;background:var(--card);border:1px solid var(--line);border-radius:99px;padding:5px 12px 5px 5px;box-shadow:var(--shadow-sm);transition:border-color .15s ease;}
+  .acct-chip:hover{border-color:var(--accent);}
+  .acct-avatar{width:24px;height:24px;border-radius:50%;background:var(--accent);color:#fff;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .acct-name{font-size:12.5px;font-weight:700;color:var(--navy-2);max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+
+  /* ---- Primary nav (workspace tabs) — fixed bottom bar ---- */
+  .tabrail{position:fixed;left:0;right:0;bottom:0;display:flex;gap:2px;overflow-x:auto;padding:6px 6px calc(6px + env(safe-area-inset-bottom,0px));margin:0;background:var(--card);border-top:1px solid var(--line);box-shadow:0 -6px 20px -10px rgba(20,23,35,.18);z-index:100;-ms-overflow-style:none;scrollbar-width:none;}
+  .tabrail::-webkit-scrollbar{display:none;}
+  .tab-pill{flex:1 0 auto;min-width:58px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;border:none;background:transparent;color:var(--ink-soft);font-size:10.5px;font-weight:700;padding:7px 4px;border-radius:12px;cursor:pointer;white-space:nowrap;transition:all .15s ease;}
+  .tab-pill:hover{color:var(--navy);}
+  .tab-pill.is-active{background:var(--accent-tint);color:var(--accent-dark);}
+  .tab-pill .icon svg{width:19px;height:19px;}
+
+  /* ---- Secondary nav (within a school / settings) ---- */
+  .subtabrail{display:flex;gap:6px;overflow-x:auto;background:var(--surface-2);border:1px solid var(--line);border-radius:99px;padding:4px;margin-bottom:16px;-ms-overflow-style:none;scrollbar-width:none;}
+  .subtabrail::-webkit-scrollbar{display:none;}
+  .subtab-pill{flex:1 0 auto;display:flex;align-items:center;justify-content:center;gap:6px;border:none;background:transparent;color:var(--ink-soft);font-size:12.5px;font-weight:700;padding:9px 12px;border-radius:99px;cursor:pointer;white-space:nowrap;transition:all .15s ease;}
+  .subtab-pill:hover{color:var(--navy);}
+  .subtab-pill.is-active{background:var(--card);color:var(--accent-dark);box-shadow:var(--shadow-sm);}
+  .subtab-pill.is-danger.is-active{color:var(--red-dark);}
+
+  .icon svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;display:block;flex-shrink:0;}
+
+  /* ---- Cards & structure ---- */
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:18px;margin-bottom:14px;box-shadow:var(--shadow-sm);}
+  .card-danger{border-color:#F0C7C3;background:linear-gradient(180deg,var(--red-tint),var(--card) 60px);}
+  .section-title{font-weight:800;font-size:14.5px;margin-bottom:10px;letter-spacing:-.005em;}
+  .subtle{color:var(--ink-soft);font-size:12.5px;}
+  .tiny-note{font-size:12px;color:var(--ink-soft);margin-top:4px;line-height:1.5;}
+  .divider{border:none;border-top:1px solid var(--line);margin:16px 0;}
+
+  /* ---- Forms ---- */
+  .field{margin-bottom:12px;}
+  .field label{display:block;font-size:11.5px;font-weight:700;color:var(--ink-soft);margin-bottom:5px;text-transform:uppercase;letter-spacing:.02em;}
+  .field input,.field select{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:var(--radius-sm);font-size:14px;background:var(--surface-2);color:var(--ink);transition:border-color .15s ease,background .15s ease;}
+  .field input:focus,.field select:focus{outline:none;border-color:var(--accent);background:#fff;}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+
+  /* ---- Toggle switch (feature/module on-off) ---- */
+  .toggle-switch{position:relative;display:inline-flex;align-items:center;width:42px;height:24px;flex-shrink:0;cursor:pointer;}
+  .toggle-switch input{position:absolute;inset:0;opacity:0;margin:0;cursor:pointer;z-index:2;}
+  .toggle-slider{position:absolute;inset:0;background:var(--slate-tint);border:1px solid var(--line);border-radius:99px;transition:background .18s ease,border-color .18s ease;}
+  .toggle-slider::before{content:"";position:absolute;top:2px;left:2px;width:18px;height:18px;background:#fff;border-radius:50%;box-shadow:0 1px 3px rgba(20,23,35,.25);transition:transform .18s ease;}
+  .toggle-switch input:checked + .toggle-slider{background:var(--teal);border-color:var(--teal-dark);}
+  .toggle-switch input:checked + .toggle-slider::before{transform:translateX(18px);}
+  .toggle-switch input:focus-visible + .toggle-slider{outline:2px solid var(--accent);outline-offset:2px;}
+  .toggle-switch input:disabled + .toggle-slider{opacity:.5;cursor:not-allowed;}
+  .toggle-row{display:flex;align-items:center;gap:9px;}
+  .toggle-state{font-size:12.5px;color:var(--ink-soft);font-weight:700;min-width:54px;text-align:right;}
+
+  /* ---- Buttons ---- */
+  .btn{border:none;border-radius:var(--radius-sm);padding:11px 16px;font-size:13.5px;font-weight:700;cursor:pointer;transition:filter .15s ease,background .15s ease;}
+  .btn:active{filter:brightness(0.94);}
+  .btn-primary{background:var(--accent);color:#fff;}
+  .btn-primary:hover{background:var(--accent-dark);}
+  .btn-ghost{background:var(--slate-tint);color:var(--navy-2);}
+  .btn-ghost:hover{background:#E3E6EE;}
+  .btn-danger{background:var(--red-tint);color:var(--red-dark);}
+  .btn-danger:hover{background:#F9DBD9;}
+  .btn-sm{padding:8px 12px;font-size:12px;}
+  .btn:disabled{opacity:.45;cursor:not-allowed;}
+  .row{display:flex;gap:8px;align-items:center;}
+
+  /* ---- Lists / rows ---- */
+  .school-row{display:flex;justify-content:space-between;align-items:center;padding:13px 2px;border-bottom:1px solid var(--line);}
+  .school-row:last-child{border-bottom:none;}
+  .school-name{font-weight:700;color:var(--navy);}
+  .clickable{cursor:pointer;border-radius:var(--radius-sm);}
+  .clickable:hover{background:var(--surface-2);}
+  .admin-row{display:flex;justify-content:space-between;align-items:flex-start;padding:11px 2px;border-bottom:1px solid var(--line);gap:8px;}
+  .admin-row:last-child{border-bottom:none;}
+  .inline-form{background:var(--surface-2);border:1px solid var(--line);border-radius:var(--radius-sm);padding:12px;margin-top:8px;}
+  .empty{color:var(--ink-soft);font-size:13px;padding:10px 0;}
+
+  /* ---- Badges ---- */
+  .badge{font-size:10.5px;font-weight:800;padding:4px 9px;border-radius:99px;text-transform:uppercase;letter-spacing:.03em;}
+  .badge-active{background:var(--teal-tint);color:var(--teal-dark);}
+  .badge-suspended{background:var(--red-tint);color:var(--red-dark);}
+  .badge-pending{background:var(--amber-tint);color:var(--amber);}
+  .badge-deactivated{background:var(--slate-tint);color:var(--slate);}
+  .badge-warn{background:var(--amber-tint);color:var(--amber);}
+
+  /* ---- Tables ---- */
+  .mini-table{width:100%;border-collapse:collapse;font-size:12.5px;}
+  .mini-table th{text-align:left;color:var(--ink-soft);font-weight:700;padding:8px 6px;border-bottom:1px solid var(--line);font-size:11px;text-transform:uppercase;letter-spacing:.02em;white-space:nowrap;}
+  .mini-table td{padding:8px 6px;border-bottom:1px solid var(--line);white-space:nowrap;}
+  .table-scroll{overflow-x:auto;max-width:100%;-webkit-overflow-scrolling:touch;margin:0 -2px;}
+  .table-scroll .mini-table{min-width:480px;}
+  .table-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:10px;}
+
+  /* ---- Nav / status links ---- */
+  .back-link{color:var(--accent-dark);font-weight:700;cursor:pointer;font-size:13px;display:inline-flex;align-items:center;gap:4px;margin-bottom:12px;}
+  .link-btn{color:var(--accent-dark);font-weight:700;cursor:pointer;}
+
+  /* ---- Messages ---- */
+  .err{background:var(--red-tint);color:var(--red-dark);padding:11px 13px;border-radius:var(--radius-sm);font-size:13px;margin-bottom:12px;}
+  .msg-ok{background:var(--teal-tint);color:var(--teal-dark);padding:11px 13px;border-radius:var(--radius-sm);font-size:13px;margin-bottom:12px;}
+
+  /* ---- Login ---- */
+  .login-wrap{min-height:86vh;display:flex;align-items:center;justify-content:center;}
+  .login-card{width:100%;max-width:360px;background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:26px;box-shadow:var(--shadow-md);}
+
+  /* ---- Misc ---- */
+  details summary{cursor:pointer;font-weight:700;color:var(--navy-2);font-size:13px;padding:4px 0;}
+  pre{background:var(--navy);color:#D7DCEA;border:1px solid var(--line);border-radius:var(--radius-sm);padding:13px;font-size:11px;overflow-x:auto;white-space:pre-wrap;}
+  hr.divider{border-top:1px solid var(--line);}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+/* ============================================================
+   NOVA MOTHER APP
+   Super-admin panel: register/suspend/manage every school that
+   uses Nova School Manager. Uses the SAME Supabase project as the
+   school app — schools are just rows in the `schools` table.
+   ============================================================ */
+const SUPABASE_URL = "https://jdayvizeqwfnknfdeudy.supabase.co";
+const SUPABASE_KEY = "sb_publishable_NfJkiWiV3eGOTWrQrztTJA_xOeby6ae";
+
+/* ---------------- ONE-TIME SETUP SQL ----------------
+   Run this in Supabase → SQL Editor before using this app. It creates the
+   mother_admins table (completely separate from school `profiles`) and the
+   two functions this app calls. Run MULTI_SCHOOL_SQL from the main app FIRST
+   — this depends on the `schools` table it creates. */
+const MOTHER_SETUP_SQL = `create extension if not exists pgcrypto;
+
+-- Safe to run even if MULTI_SCHOOL_SQL (from the main app) hasn't been run yet.
+create table if not exists schools (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  status text not null default 'active',
+  created_at timestamptz not null default now()
+);
+alter table schools enable row level security;
+drop policy if exists "Anyone can read active schools" on schools;
+create policy "Anyone can read active schools" on schools for select using (true);
+
+-- Populated by the school app's "Register Your School" screen (see
+-- SCHOOL_SELF_REGISTRATION_SQL / register_school() in the main app) when a
+-- school self-registers, instead of a mother admin adding just a name here.
+alter table schools add column if not exists motto text;
+alter table schools add column if not exists location text;
+alter table schools add column if not exists size_range text;
+alter table schools add column if not exists password_hash text;
+
+create table if not exists mother_admins (
+  id uuid primary key default gen_random_uuid(),
+  username text unique not null,
+  password_hash text not null,
+  full_name text,
+  created_at timestamptz not null default now()
+);
+alter table mother_admins enable row level security;
+-- No public policies at all: this table is only ever touched through the
+-- security-definer functions below, never queried directly with the anon key.
+
+-- Adds another mother admin — must be called with an EXISTING admin's own
+-- username+password as proof, so this can safely be exposed to the app
+-- (only someone who can already log in can create a new admin account).
+drop function if exists create_mother_admin(text, text, text);
+drop function if exists create_mother_admin(text, text, text, text, text);
+create function create_mother_admin(p_creator_username text, p_creator_password text, p_new_username text, p_new_password text, p_new_full_name text default null)
+returns void language plpgsql security definer as $$
+declare creator mother_admins;
+begin
+  select * into creator from mother_admins where mother_admins.username = p_creator_username;
+  if creator.id is null or crypt(p_creator_password, creator.password_hash) <> creator.password_hash then
+    raise exception 'Your password could not be verified.';
+  end if;
+  if exists (select 1 from mother_admins where username = p_new_username) then
+    raise exception 'That username already exists.';
+  end if;
+  insert into mother_admins (username, password_hash, full_name)
+  values (p_new_username, crypt(p_new_password, gen_salt('bf')), p_new_full_name);
+end;
+$$;
+grant execute on function create_mother_admin(text,text,text,text,text) to anon, authenticated;
+-- Your very first admin account still has to be created directly in the SQL
+-- Editor once (nothing exists yet to prove you're an admin!) — e.g.:
+-- insert into mother_admins (username, password_hash, full_name)
+-- values ('you', crypt('yourpassword', gen_salt('bf')), 'Your Name');
+
+drop function if exists verify_mother_login(text, text);
+create function verify_mother_login(p_username text, p_password text)
+returns table(id uuid, username text, full_name text)
+language plpgsql security definer as $$
+declare found mother_admins;
+begin
+  select * into found from mother_admins where mother_admins.username = p_username;
+  if found.id is null or crypt(p_password, found.password_hash) <> found.password_hash then
+    raise exception 'Incorrect username or password.';
+  end if;
+  return query select found.id, found.username, found.full_name;
+end;
+$$;
+grant execute on function verify_mother_login(text,text) to anon, authenticated;
+
+-- Looks a mother admin up by username only, no password — used purely to
+-- restore a "remembered" session on this same device, same trust model as
+-- the main school app's "Remember me".
+drop function if exists restore_mother_session(text);
+create function restore_mother_session(p_username text)
+returns table(id uuid, username text, full_name text)
+language plpgsql security definer as $$
+begin
+  return query select mother_admins.id, mother_admins.username, mother_admins.full_name
+    from mother_admins where mother_admins.username = p_username;
+end;
+$$;
+grant execute on function restore_mother_session(text) to anon, authenticated;
+
+-- Schools need to be insertable/updatable by a signed-in mother admin. Since
+-- this app has no real Postgres auth session either, we keep it simple and
+-- consistent with the rest of Nova: RLS stays permissive on \`schools\` and
+-- the mother app is the only place that ever writes to it.
+drop policy if exists "Mother app can manage schools" on schools;
+create policy "Mother app can manage schools" on schools for all using (true) with check (true);`;
+
+/* ---------------- MOTHER SUITE UPGRADE (run once) ----------------
+   Adds three things on top of MOTHER_SETUP_SQL above:
+   1) An approval workflow — self-registered schools now start as
+      'pending' and can't log in until a mother admin approves them.
+   2) Subscription & billing — plan, billing cycle, amount, expiry
+      date, and a payment history log.
+   3) Administrator management — reset an admin's password, and
+      grant/revoke admin privileges for a school's staff.
+   Safe to re-run. Needs MOTHER_SETUP_SQL and the main app's
+   MULTI_SCHOOL_SQL / SCHOOL_SELF_REGISTRATION_SQL to already exist. */
+const MOTHER_SUITE_SQL = `-- 1) APPROVAL WORKFLOW --------------------------------------------
+alter table schools add column if not exists approved_at timestamptz;
+
+-- New self-registrations now start 'pending' instead of 'active'.
+drop function if exists register_school(text,text,text,text,text,text,text,text,text,text,text,text,text);
+create function register_school(
+  p_school_name text, p_school_motto text, p_school_location text,
+  p_school_password text, p_school_size_range text,
+  p_admin_full_name text, p_admin_username text, p_admin_phone text,
+  p_admin_whatsapp text, p_admin_email text, p_admin_location text,
+  p_admin_password text, p_admin_pin text default null
+) returns profiles
+language plpgsql security definer as $register_school$
+declare new_school schools; new_admin profiles;
+begin
+  if p_school_name is null or trim(p_school_name) = '' then
+    raise exception 'School name is required.';
+  end if;
+  if p_school_password is null or length(p_school_password) < 6 then
+    raise exception 'School password must be at least 6 characters.';
+  end if;
+  if p_admin_full_name is null or trim(p_admin_full_name) = '' then
+    raise exception 'Administrator full name is required.';
+  end if;
+  if p_admin_username is null or trim(p_admin_username) = '' then
+    raise exception 'Administrator username is required.';
+  end if;
+  if exists (select 1 from profiles where username = p_admin_username) then
+    raise exception 'That username is already taken.';
+  end if;
+  if p_admin_password is null or length(p_admin_password) < 6 then
+    raise exception 'Administrator password must be at least 6 characters.';
+  end if;
+  insert into schools (name, motto, location, size_range, password_hash, status)
+  values (
+    trim(p_school_name), nullif(trim(p_school_motto),''), nullif(trim(p_school_location),''),
+    nullif(p_school_size_range,''), crypt(p_school_password, gen_salt('bf')), 'pending'
+  ) returning * into new_school;
+  insert into profiles (
+    full_name, username, department, phone, whatsapp, email, location,
+    pin, password_hash, role, school_id
+  ) values (
+    trim(p_admin_full_name), p_admin_username, 'administration',
+    nullif(p_admin_phone,''), nullif(p_admin_whatsapp,''), nullif(p_admin_email,''), nullif(p_admin_location,''),
+    nullif(p_admin_pin,''), crypt(p_admin_password, gen_salt('bf')), 'staff', new_school.id
+  ) returning * into new_admin;
+  new_admin.password_hash := null;
+  return new_admin;
+end;
+$register_school$;
+grant execute on function register_school(text,text,text,text,text,text,text,text,text,text,text,text,text) to anon, authenticated;
+
+-- Login now also blocks accounts whose school is pending/suspended/deactivated.
+drop function if exists verify_login(text, text);
+create function verify_login(p_username text, p_password text) returns profiles
+language plpgsql security definer as $verify_login$
+declare found_row profiles; school_row schools;
+begin
+  select * into found_row from profiles where username = p_username;
+  if found_row.id is null or found_row.password_hash is null
+     or crypt(p_password, found_row.password_hash) <> found_row.password_hash then
+    raise exception 'Incorrect username or password.';
+  end if;
+  if found_row.deleted_at is not null then
+    raise exception 'This account has been deleted. Contact Administration.';
+  end if;
+  if found_row.suspended_at is not null then
+    raise exception 'This account is suspended. Contact Administration.';
+  end if;
+  if found_row.school_id is not null then
+    select * into school_row from schools where id = found_row.school_id;
+    if school_row.status = 'pending' then
+      raise exception 'Your school is still awaiting approval by TransApple. Please check back soon.';
+    elsif school_row.status = 'suspended' then
+      raise exception 'Your school''s account is suspended. Contact TransApple to resolve this.';
+    elsif school_row.status = 'deactivated' then
+      raise exception 'Your school''s account has been deactivated. Contact TransApple for help.';
+    end if;
+  end if;
+  found_row.password_hash := null;
+  return found_row;
+end;
+$verify_login$;
+grant execute on function verify_login(text,text) to anon, authenticated;
+
+-- 2) SUBSCRIPTION & BILLING ----------------------------------------
+alter table schools add column if not exists plan text;
+alter table schools add column if not exists billing_cycle text; -- 'monthly' | 'termly' | 'yearly'
+alter table schools add column if not exists subscription_amount numeric;
+alter table schools add column if not exists subscription_expires_at date;
+
+create table if not exists school_payments (
+  id uuid primary key default gen_random_uuid(),
+  school_id uuid references schools(id) on delete cascade,
+  amount numeric not null,
+  method text, -- 'cash' | 'bank' | 'mobile_money' | 'cheque' | 'other'
+  note text,
+  extended_days integer,
+  new_expires_at date,
+  created_at timestamptz not null default now()
+);
+alter table school_payments enable row level security;
+drop policy if exists "Mother app can manage school_payments" on school_payments;
+create policy "Mother app can manage school_payments" on school_payments for all using (true) with check (true);
+
+-- Sets/updates a school's plan details directly (no payment logged).
+drop function if exists set_school_plan(uuid, text, text, numeric, date);
+create function set_school_plan(p_school_id uuid, p_plan text, p_billing_cycle text, p_amount numeric, p_expires_at date)
+returns void language plpgsql security definer as $$
+begin
+  update schools set plan = nullif(p_plan,''), billing_cycle = nullif(p_billing_cycle,''),
+    subscription_amount = p_amount, subscription_expires_at = p_expires_at
+  where id = p_school_id;
+end;
+$$;
+grant execute on function set_school_plan(uuid,text,text,numeric,date) to anon, authenticated;
+
+-- Logs a payment and extends the subscription's expiry date.
+drop function if exists record_school_payment(uuid, numeric, text, text, integer);
+create function record_school_payment(p_school_id uuid, p_amount numeric, p_method text, p_note text, p_extend_days integer)
+returns school_payments language plpgsql security definer as $$
+declare current_expiry date; new_expiry date; new_row school_payments;
+begin
+  if p_amount is null or p_amount <= 0 then
+    raise exception 'Enter a valid amount.';
+  end if;
+  select subscription_expires_at into current_expiry from schools where id = p_school_id;
+  new_expiry := greatest(coalesce(current_expiry, current_date), current_date) + make_interval(days => coalesce(p_extend_days,0));
+  update schools set subscription_expires_at = new_expiry where id = p_school_id;
+  insert into school_payments (school_id, amount, method, note, extended_days, new_expires_at)
+  values (p_school_id, p_amount, nullif(p_method,''), nullif(p_note,''), p_extend_days, new_expiry)
+  returning * into new_row;
+  return new_row;
+end;
+$$;
+grant execute on function record_school_payment(uuid,numeric,text,text,integer) to anon, authenticated;
+
+-- 3) ADMINISTRATOR MANAGEMENT ---------------------------------------
+-- Resets a school administrator's password (mother-app superadmin action).
+drop function if exists mother_reset_admin_password(uuid, uuid, text);
+create function mother_reset_admin_password(p_school_id uuid, p_profile_id uuid, p_new_password text)
+returns void language plpgsql security definer as $$
+declare found_row profiles;
+begin
+  select * into found_row from profiles where id = p_profile_id and school_id = p_school_id;
+  if found_row.id is null then
+    raise exception 'That account was not found at this school.';
+  end if;
+  if p_new_password is null or length(p_new_password) < 6 then
+    raise exception 'New password must be at least 6 characters.';
+  end if;
+  update profiles set password_hash = crypt(p_new_password, gen_salt('bf')) where id = p_profile_id;
+end;
+$$;
+grant execute on function mother_reset_admin_password(uuid,uuid,text) to anon, authenticated;
+
+-- Grants or revokes "administration" (full-access) privileges for a staff
+-- member. Won't let you revoke a school's last remaining administrator.
+drop function if exists set_admin_privilege(uuid, uuid, boolean);
+create function set_admin_privilege(p_school_id uuid, p_profile_id uuid, p_grant boolean)
+returns void language plpgsql security definer as $$
+declare found_row profiles; admin_count integer;
+begin
+  select * into found_row from profiles where id = p_profile_id and school_id = p_school_id;
+  if found_row.id is null then
+    raise exception 'That account was not found at this school.';
+  end if;
+  if p_grant then
+    update profiles set department = 'administration' where id = p_profile_id;
+  else
+    select count(*) into admin_count from profiles
+      where school_id = p_school_id and department = 'administration' and deleted_at is null;
+    if admin_count <= 1 then
+      raise exception 'This school must keep at least one administrator. Grant another admin first.';
+    end if;
+    update profiles set department = 'staff' where id = p_profile_id;
+  end if;
+end;
+$$;
+grant execute on function set_admin_privilege(uuid,uuid,boolean) to anon, authenticated;`;
+
+/* ---------------- MOTHER OPS UPGRADE (run once, after MOTHER_SUITE_SQL) ----------------
+   Adds: last-login tracking (for "active users" stats), an error log table,
+   announcements + support requests (Communication Center), and a changelog +
+   maintenance schedule + backup checkpoint log (Updates & Maintenance).
+   None of this pushes anything to the school app automatically — see the
+   note in the app's Updates tab for the small optional snippet that makes
+   the school app actually display announcements/maintenance banners. */
+const MOTHER_OPS_SQL = `-- Stamps last_login_at on every successful login (superset of verify_login above).
+alter table profiles add column if not exists last_login_at timestamptz;
+drop function if exists verify_login(text, text);
+create function verify_login(p_username text, p_password text) returns profiles
+language plpgsql security definer as $verify_login$
+declare found_row profiles; school_row schools;
+begin
+  select * into found_row from profiles where username = p_username;
+  if found_row.id is null or found_row.password_hash is null
+     or crypt(p_password, found_row.password_hash) <> found_row.password_hash then
+    raise exception 'Incorrect username or password.';
+  end if;
+  if found_row.deleted_at is not null then
+    raise exception 'This account has been deleted. Contact Administration.';
+  end if;
+  if found_row.suspended_at is not null then
+    raise exception 'This account is suspended. Contact Administration.';
+  end if;
+  if found_row.school_id is not null then
+    select * into school_row from schools where id = found_row.school_id;
+    if school_row.status = 'pending' then
+      raise exception 'Your school is still awaiting approval by TransApple. Please check back soon.';
+    elsif school_row.status = 'suspended' then
+      raise exception 'Your school''s account is suspended. Contact TransApple to resolve this.';
+    elsif school_row.status = 'deactivated' then
+      raise exception 'Your school''s account has been deactivated. Contact TransApple for help.';
+    end if;
+  end if;
+  update profiles set last_login_at = now() where id = found_row.id;
+  found_row.password_hash := null;
+  return found_row;
+end;
+$verify_login$;
+grant execute on function verify_login(text,text) to anon, authenticated;
+
+-- System monitoring: a place for the school app to (optionally) report client
+-- errors. Empty until the school app is hooked up to write to it.
+create table if not exists platform_error_log (
+  id uuid primary key default gen_random_uuid(),
+  school_id uuid references schools(id) on delete set null,
+  message text not null,
+  context text,
+  created_at timestamptz not null default now()
+);
+alter table platform_error_log enable row level security;
+drop policy if exists "Anyone can log platform errors" on platform_error_log;
+create policy "Anyone can log platform errors" on platform_error_log for insert with check (true);
+drop policy if exists "Mother app can read platform errors" on platform_error_log;
+create policy "Mother app can read platform errors" on platform_error_log for select using (true);
+drop policy if exists "Mother app can delete platform errors" on platform_error_log;
+create policy "Mother app can delete platform errors" on platform_error_log for delete using (true);
+
+-- Communication Center: announcements sent to one, several, or all schools.
+create table if not exists mother_announcements (
+  id uuid primary key default gen_random_uuid(),
+  title text not null,
+  body text not null,
+  target_all boolean not null default false,
+  target_school_ids uuid[],
+  created_at timestamptz not null default now()
+);
+alter table mother_announcements enable row level security;
+drop policy if exists "Mother app can manage announcements" on mother_announcements;
+create policy "Mother app can manage announcements" on mother_announcements for all using (true) with check (true);
+-- Schools can only read announcements addressed to them (or to everyone).
+drop policy if exists "Schools can read their announcements" on mother_announcements;
+create policy "Schools can read their announcements" on mother_announcements for select using (true);
+
+-- Communication Center: support requests coming in from schools.
+create table if not exists school_support_requests (
+  id uuid primary key default gen_random_uuid(),
+  school_id uuid references schools(id) on delete cascade,
+  subject text not null,
+  message text not null,
+  status text not null default 'open', -- 'open' | 'resolved'
+  created_at timestamptz not null default now()
+);
+alter table school_support_requests enable row level security;
+drop policy if exists "Anyone can submit support requests" on school_support_requests;
+create policy "Anyone can submit support requests" on school_support_requests for insert with check (true);
+drop policy if exists "Mother app can manage support requests" on school_support_requests;
+create policy "Mother app can manage support requests" on school_support_requests for all using (true) with check (true);
+
+-- Updates & Maintenance: a changelog of platform updates.
+create table if not exists platform_changelog (
+  id uuid primary key default gen_random_uuid(),
+  title text not null,
+  description text,
+  created_at timestamptz not null default now()
+);
+alter table platform_changelog enable row level security;
+drop policy if exists "Mother app can manage changelog" on platform_changelog;
+create policy "Mother app can manage changelog" on platform_changelog for all using (true) with check (true);
+
+-- Updates & Maintenance: scheduled maintenance windows.
+create table if not exists maintenance_windows (
+  id uuid primary key default gen_random_uuid(),
+  starts_at timestamptz not null,
+  ends_at timestamptz not null,
+  message text,
+  cancelled boolean not null default false,
+  created_at timestamptz not null default now()
+);
+alter table maintenance_windows enable row level security;
+drop policy if exists "Mother app can manage maintenance windows" on maintenance_windows;
+create policy "Mother app can manage maintenance windows" on maintenance_windows for all using (true) with check (true);
+
+-- Updates & Maintenance: a manual log of verified backups (actual backup
+-- execution is handled by Supabase itself — see the note in the app).
+create table if not exists backup_log (
+  id uuid primary key default gen_random_uuid(),
+  note text,
+  created_at timestamptz not null default now()
+);
+alter table backup_log enable row level security;
+drop policy if exists "Mother app can manage backup log" on backup_log;
+create policy "Mother app can manage backup log" on backup_log for all using (true) with check (true);`;
+
+/* ---------------- MOTHER SECURITY UPGRADE (run once, after MOTHER_OPS_SQL) ----------------
+   Adds: roles + active/deactivated status for mother admins, a system-wide
+   audit log of actions taken in this app, and a login-attempt log (for
+   monitoring suspicious access). 'read_only' admins can view everything but
+   every write in the app is blocked for them, both client-side and (for the
+   admin-management actions) inside the functions below. */
+const MOTHER_SECURITY_SQL = `-- Roles & active flag for mother admins.
+alter table mother_admins add column if not exists role text not null default 'full_access'; -- 'full_access' | 'read_only'
+alter table mother_admins add column if not exists active boolean not null default true;
+
+-- System-wide audit log: every meaningful write made from this app.
+create table if not exists audit_log (
+  id uuid primary key default gen_random_uuid(),
+  actor_username text,
+  action text not null,
+  target_type text,
+  target_id text,
+  details text,
+  created_at timestamptz not null default now()
+);
+alter table audit_log enable row level security;
+drop policy if exists "Mother app can manage audit log" on audit_log;
+create policy "Mother app can manage audit log" on audit_log for all using (true) with check (true);
+
+-- Login activity: every attempt (success or failure) against mother_admins,
+-- so repeated failures against one username are visible as suspicious access.
+create table if not exists mother_login_log (
+  id uuid primary key default gen_random_uuid(),
+  username text not null,
+  success boolean not null,
+  created_at timestamptz not null default now()
+);
+alter table mother_login_log enable row level security;
+drop policy if exists "Mother app can manage login log" on mother_login_log;
+create policy "Mother app can manage login log" on mother_login_log for all using (true) with check (true);
+
+-- Login now logs every attempt, blocks deactivated admins, and returns role.
+drop function if exists verify_mother_login(text, text);
+create function verify_mother_login(p_username text, p_password text)
+returns table(id uuid, username text, full_name text, role text)
+language plpgsql security definer as $$
+declare found mother_admins;
+begin
+  select * into found from mother_admins where mother_admins.username = p_username;
+  if found.id is null or crypt(p_password, found.password_hash) <> found.password_hash then
+    insert into mother_login_log (username, success) values (p_username, false);
+    raise exception 'Incorrect username or password.';
+  end if;
+  if found.active is false then
+    insert into mother_login_log (username, success) values (p_username, false);
+    raise exception 'This admin account has been deactivated.';
+  end if;
+  insert into mother_login_log (username, success) values (p_username, true);
+  return query select found.id, found.username, found.full_name, found.role;
+end;
+$$;
+grant execute on function verify_mother_login(text,text) to anon, authenticated;
+
+-- Remembered-session restore now also respects active/role.
+drop function if exists restore_mother_session(text);
+create function restore_mother_session(p_username text)
+returns table(id uuid, username text, full_name text, role text)
+language plpgsql security definer as $$
+begin
+  return query select mother_admins.id, mother_admins.username, mother_admins.full_name, mother_admins.role
+    from mother_admins where mother_admins.username = p_username and mother_admins.active is true;
+end;
+$$;
+grant execute on function restore_mother_session(text) to anon, authenticated;
+
+-- Creating a new admin now also requires the creator to be full_access (not
+-- just any logged-in admin), accepts a role for the new account, and logs it.
+drop function if exists create_mother_admin(text, text, text, text, text);
+drop function if exists create_mother_admin(text, text, text, text, text, text);
+create function create_mother_admin(p_creator_username text, p_creator_password text, p_new_username text, p_new_password text, p_new_full_name text default null, p_new_role text default 'full_access')
+returns void language plpgsql security definer as $$
+declare creator mother_admins;
+begin
+  select * into creator from mother_admins where mother_admins.username = p_creator_username;
+  if creator.id is null or crypt(p_creator_password, creator.password_hash) <> creator.password_hash then
+    raise exception 'Your password could not be verified.';
+  end if;
+  if creator.role <> 'full_access' then
+    raise exception 'Only full-access admins can add new admins.';
+  end if;
+  if exists (select 1 from mother_admins where username = p_new_username) then
+    raise exception 'That username already exists.';
+  end if;
+  insert into mother_admins (username, password_hash, full_name, role)
+  values (p_new_username, crypt(p_new_password, gen_salt('bf')), p_new_full_name, coalesce(nullif(p_new_role,''), 'full_access'));
+  insert into audit_log (actor_username, action, target_type, target_id, details)
+  values (p_creator_username, 'create_admin', 'mother_admin', p_new_username, 'role=' || coalesce(p_new_role,'full_access'));
+end;
+$$;
+grant execute on function create_mother_admin(text,text,text,text,text,text) to anon, authenticated;
+
+-- Lists mother admins (no password hashes) for the Security tab.
+drop function if exists list_mother_admins();
+create function list_mother_admins()
+returns table(id uuid, username text, full_name text, role text, active boolean, created_at timestamptz)
+language plpgsql security definer as $$
+begin
+  return query select mother_admins.id, mother_admins.username, mother_admins.full_name,
+    mother_admins.role, mother_admins.active, mother_admins.created_at
+    from mother_admins order by mother_admins.created_at asc;
+end;
+$$;
+grant execute on function list_mother_admins() to anon, authenticated;
+
+-- Changes another admin's role/active status. Requires the acting admin's own
+-- password as proof, requires the actor to be full_access, and always leaves
+-- at least one active full_access admin standing.
+drop function if exists set_mother_admin_status(text, text, uuid, text, boolean);
+create function set_mother_admin_status(p_actor_username text, p_actor_password text, p_target_id uuid, p_new_role text, p_new_active boolean)
+returns void language plpgsql security definer as $$
+declare actor mother_admins; target mother_admins; remaining integer;
+begin
+  select * into actor from mother_admins where username = p_actor_username;
+  if actor.id is null or crypt(p_actor_password, actor.password_hash) <> actor.password_hash then
+    raise exception 'Your password could not be verified.';
+  end if;
+  if actor.role <> 'full_access' then
+    raise exception 'Only full-access admins can change admin roles or status.';
+  end if;
+  select * into target from mother_admins where id = p_target_id;
+  if target.id is null then
+    raise exception 'Admin not found.';
+  end if;
+  if p_new_role <> 'full_access' or p_new_active is false then
+    select count(*) into remaining from mother_admins
+      where role = 'full_access' and active = true and id <> target.id;
+    if remaining = 0 then
+      raise exception 'At least one active, full-access admin must remain.';
+    end if;
+  end if;
+  update mother_admins set role = coalesce(nullif(p_new_role,''), role), active = coalesce(p_new_active, active)
+    where id = p_target_id;
+  insert into audit_log (actor_username, action, target_type, target_id, details)
+  values (p_actor_username, 'update_admin_status', 'mother_admin', target.username, 'role=' || p_new_role || ' active=' || p_new_active);
+end;
+$$;
+grant execute on function set_mother_admin_status(text,text,uuid,text,boolean) to anon, authenticated;`;
+
+/* ---------------- FEATURE / MODULE CONTROL (run once) ----------------
+   One jsonb column on the existing `schools` table — no new tables, no new
+   RPCs needed, since `schools` already has a permissive "for all" policy for
+   the mother app (see MOTHER_SETUP_SQL above) and the school app already
+   reads `schools` with an open "select" policy for every column. */
+const SCHOOL_FEATURES_SQL = `alter table schools add column if not exists features jsonb not null default '{}'::jsonb;`;
+
+/* ---------------- DANGER ZONE: WIPE / DELETE A SCHOOL (run once) ----------------
+   Needs MOTHER_SECURITY_SQL above already run (uses mother_admins.role and
+   audit_log). Two functions:
+   - purge_school_data(): deletes every row belonging to one school across
+     every school-scoped table, but leaves the `schools` row itself (and its
+     plan/features/status) in place. Use this to wipe a school clean without
+     removing its account.
+   - delete_school_completely(): calls purge_school_data() and then deletes
+     the `schools` row too. The school disappears from this app entirely.
+   Both require a FULL-ACCESS admin's own password as proof, exactly like
+   other destructive actions in this app, and both are logged to audit_log.
+   IRREVERSIBLE — there is no undo and no soft-delete here; this is a real
+   permanent delete, unlike the app's own per-record Trash/soft-delete. */
+const SCHOOL_DANGER_ZONE_SQL = `drop function if exists purge_school_data(text, text, uuid);
+create function purge_school_data(p_actor_username text, p_actor_password text, p_school_id uuid)
+returns void language plpgsql security definer as $$
+declare actor mother_admins; t text;
+begin
+  select * into actor from mother_admins where mother_admins.username = p_actor_username;
+  if actor.id is null or crypt(p_actor_password, actor.password_hash) <> actor.password_hash then
+    raise exception 'Your password could not be verified.';
+  end if;
+  if actor.active is not true then
+    raise exception 'Your account is deactivated.';
+  end if;
+  if actor.role <> 'full_access' then
+    raise exception 'Only full-access admins can delete school data.';
+  end if;
+  if p_school_id is null or not exists (select 1 from schools where id = p_school_id) then
+    raise exception 'School not found.';
+  end if;
+
+  -- Bypass foreign-key/trigger ordering for this transaction only, so every
+  -- school-scoped table can be cleared regardless of which references which.
+  -- (SET LOCAL automatically reverts at the end of this function's transaction.)
+  set local session_replication_role = replica;
+
+  foreach t in array array[
+    -- Every table the school app scopes by school_id (see MULTI_SCHOOL_SQL),
+    -- plus fee_reminders which was added afterwards. Keep this list in sync
+    -- with that one if the school app ever adds a new school-scoped table.
+    'parent_messages','private_messages','parent_students','fee_reminders','account_change_requests',
+    'exam_results','attendance','staff_attendance','fee_payments','fee_structures',
+    'exams','exam_types','grades','class_subjects','subjects','classes','terms',
+    'school_communications','school_meetings','school_settings',
+    'students','teachers','profiles'
+  ]
+  loop
+    if to_regclass(t) is not null then
+      execute format('delete from %I where school_id = %L', t, p_school_id);
+    end if;
+  end loop;
+
+  -- Mother-system-owned records tied to this school.
+  if to_regclass('school_payments') is not null then delete from school_payments where school_id = p_school_id; end if;
+  if to_regclass('school_support_requests') is not null then delete from school_support_requests where school_id = p_school_id; end if;
+  if to_regclass('platform_error_log') is not null then update platform_error_log set school_id = null where school_id = p_school_id; end if;
+
+  insert into audit_log (actor_username, action, target_type, target_id, details)
+  values (p_actor_username, 'purge_school_data', 'school', p_school_id::text, 'every data row for this school was permanently deleted');
+end;
+$$;
+grant execute on function purge_school_data(text,text,uuid) to anon, authenticated;
+
+drop function if exists delete_school_completely(text, text, uuid);
+create function delete_school_completely(p_actor_username text, p_actor_password text, p_school_id uuid)
+returns void language plpgsql security definer as $$
+declare school_name text;
+begin
+  select name into school_name from schools where id = p_school_id;
+  perform purge_school_data(p_actor_username, p_actor_password, p_school_id);
+  delete from schools where id = p_school_id;
+  insert into audit_log (actor_username, action, target_type, target_id, details)
+  values (p_actor_username, 'delete_school_completely', 'school', p_school_id::text, 'school "' || coalesce(school_name,'') || '" and all its data were permanently deleted');
+end;
+$$;
+grant execute on function delete_school_completely(text,text,uuid) to anon, authenticated;`;
+
+async function sb(path, opts = {}) {
+  const headers = Object.assign({
+    "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY, "Content-Type": "application/json",
+  }, opts.headers || {});
+  let res;
+  try { res = await fetch(SUPABASE_URL + path, Object.assign({}, opts, { headers })); }
+  catch (e) { throw new Error("Check your internet connection and try again."); }
+  let data = null;
+  try { data = await res.json(); } catch(e) {}
+  if (!res.ok) throw new Error((data && (data.message || data.error_description)) || "Request failed");
+  return data;
+}
+const qs = (o) => Object.entries(o).filter(([,v])=>v!=null && v!=="").map(([k,v])=>`${k}=${v}`).join("&");
+
+const REMEMBER_KEY = "novaMotherUsername";
+let motherAdmin = null;
+let view = "dashboard"; // "dashboard", "analytics", "monitoring", "comms", "updates", "settings", or "schoolDetail"
+let currentSchoolId = null;
+let schoolSubTab = "subscription"; // "subscription", "features", "admins", "danger"
+let schoolDangerNotice = null; // one-shot message shown when redirected into the Danger Zone tab
+let settingsSubTab = "account"; // "account", "admins", "database"
+const LOG_PAGE_SIZE = 10; // default number of rows shown before "Show all"
+let auditLogItems = [];
+let auditLogShowAll = false;
+let loginActivityItems = [];
+let loginActivityShowAll = false;
+const SCHOOL_TABS = [["subscription","Subscription","subscription"],["features","Features & Modules","features"],["admins","Administrators","admins"],["danger","Danger Zone","danger",true]];
+const SETTINGS_TABS = [["account","Account","account"],["plans","Plans & Features","subscription"],["admins","Admins","admins"],["database","Database","database"]];
+
+function daysUntil(dateStr) {
+  if (!dateStr) return null;
+  const ms = new Date(dateStr + "T00:00:00") - new Date(new Date().toDateString());
+  return Math.round(ms / 86400000);
+}
+function subscriptionBadge(s) {
+  if (!s.subscription_expires_at) return `<span class="badge badge-deactivated">No plan set</span>`;
+  const d = daysUntil(s.subscription_expires_at);
+  if (d < 0) return `<span class="badge badge-suspended">Expired ${Math.abs(d)}d ago</span>`;
+  if (d <= 7) return `<span class="badge badge-warn">Expires in ${d}d</span>`;
+  if (d <= 30) return `<span class="badge badge-warn">Expires in ${d}d</span>`;
+  return `<span class="badge badge-active">Active until ${s.subscription_expires_at}</span>`;
+}
+function statusBadge(status) {
+  const map = { pending:"badge-pending", active:"badge-active", suspended:"badge-suspended", deactivated:"badge-deactivated" };
+  return `<span class="badge ${map[status]||'badge-deactivated'}">${status}</span>`;
+}
+
+function rememberMother(username) { try { localStorage.setItem(REMEMBER_KEY, username); } catch(e) {} }
+function forgetMother() { try { localStorage.removeItem(REMEMBER_KEY); } catch(e) {} }
+function getRememberedMother() { try { return localStorage.getItem(REMEMBER_KEY) || null; } catch(e) { return null; } }
+
+async function motherLogin(username, password, remember) {
+  const rows = await sb(`/rest/v1/rpc/verify_mother_login`, { method:"POST", body: JSON.stringify({ p_username: username, p_password: password }) });
+  const row = Array.isArray(rows) ? rows[0] : rows;
+  if (!row || !row.id) throw new Error("Incorrect username or password.");
+  motherAdmin = row;
+  if (remember) rememberMother(username); else forgetMother();
+}
+// Silently restores a "remembered" session on launch, same trust model as the
+// main school app: look the admin back up by username, no password needed.
+async function tryRestoreMotherSession() {
+  const username = getRememberedMother();
+  if (!username) return false;
+  try {
+    const rows = await sb(`/rest/v1/rpc/restore_mother_session`, { method:"POST", body: JSON.stringify({ p_username: username }) });
+    const row = Array.isArray(rows) ? rows[0] : rows;
+    if (!row || !row.id) { forgetMother(); return false; }
+    motherAdmin = row;
+    return true;
+  } catch(e) { return false; }
+}
+function motherLogout() { motherAdmin = null; view = "dashboard"; forgetMother(); render(); }
+async function addMotherAdmin({ creatorPassword, newUsername, newPassword, newFullName, newRole }) {
+  assertFullAccess();
+  await sb(`/rest/v1/rpc/create_mother_admin`, { method:"POST", body: JSON.stringify({
+    p_creator_username: motherAdmin.username, p_creator_password: creatorPassword,
+    p_new_username: newUsername, p_new_password: newPassword, p_new_full_name: newFullName || null,
+    p_new_role: newRole || "full_access",
+  }) });
+}
+
+// Every mutating data-layer function below calls this first. Throws (and so
+// surfaces as a normal error message in the UI) if the signed-in admin is
+// read-only — read-only admins can see every tab but can't change anything.
+function assertFullAccess() {
+  if (motherAdmin && motherAdmin.role === "read_only") {
+    throw new Error("Your account is read-only and can't make changes. Ask a full-access admin.");
+  }
+}
+// Best-effort audit trail — never blocks the user's action if logging fails.
+async function logAudit(action, targetType, targetId, details) {
+  try {
+    await sb(`/rest/v1/audit_log`, { method:"POST", body: JSON.stringify({
+      actor_username: motherAdmin ? motherAdmin.username : null,
+      action, target_type: targetType || null,
+      target_id: targetId != null ? String(targetId) : null,
+      details: details || null,
+    }) });
+  } catch(e) { /* logging failure shouldn't block the actual action */ }
+}
+async function listAuditLog(limit) {
+  return sb(`/rest/v1/audit_log?${qs({select:"*", order:"created_at.desc", limit: limit || 50})}`);
+}
+async function listLoginLog(limit) {
+  return sb(`/rest/v1/mother_login_log?${qs({select:"*", order:"created_at.desc", limit: limit || 50})}`);
+}
+// Clearing a log requires full access. Uses a "created before right now"
+// filter (PostgREST requires some filter on DELETE) so every existing row
+// qualifies. The audit log intentionally logs its own clearing — a fresh
+// entry survives to record who wiped it and when.
+async function clearAuditLog() {
+  assertFullAccess();
+  await sb(`/rest/v1/audit_log?created_at=lte.${encodeURIComponent(new Date().toISOString())}`, { method:"DELETE" });
+  logAudit("clear_audit_log", "audit_log", null, null);
+}
+async function clearLoginLog() {
+  assertFullAccess();
+  await sb(`/rest/v1/mother_login_log?created_at=lte.${encodeURIComponent(new Date().toISOString())}`, { method:"DELETE" });
+  logAudit("clear_login_log", "mother_login_log", null, null);
+}
+async function listMotherAdmins() {
+  const rows = await sb(`/rest/v1/rpc/list_mother_admins`, { method:"POST", body: JSON.stringify({}) });
+  return rows || [];
+}
+async function setMotherAdminStatus(actorPassword, targetId, newRole, newActive) {
+  assertFullAccess();
+  await sb(`/rest/v1/rpc/set_mother_admin_status`, { method:"POST", body: JSON.stringify({
+    p_actor_username: motherAdmin.username, p_actor_password: actorPassword,
+    p_target_id: targetId, p_new_role: newRole, p_new_active: newActive,
+  }) });
+}
+
+async function listSchools() {
+  return sb(`/rest/v1/schools?${qs({select:"*", order:"created_at.desc"})}`);
+}
+async function createSchool(name) {
+  assertFullAccess();
+  const rows = await sb(`/rest/v1/schools`, { method:"POST", body: JSON.stringify({ name, status:"active", approved_at: new Date().toISOString() }), headers:{ "Prefer":"return=representation" } });
+  const row = Array.isArray(rows) ? rows[0] : rows;
+  logAudit("create_school", "school", row && row.id, name);
+  return rows;
+}
+async function setSchoolStatus(id, status) {
+  assertFullAccess();
+  const res = await sb(`/rest/v1/schools?id=eq.${id}`, { method:"PATCH", body: JSON.stringify({ status }) });
+  logAudit("set_school_status", "school", id, `status=${status}`);
+  return res;
+}
+async function deleteSchool(id) {
+  assertFullAccess();
+  const res = await sb(`/rest/v1/schools?id=eq.${id}`, { method:"DELETE" });
+  logAudit("delete_school", "school", id, null);
+  return res;
+}
+// Wipes every data row belonging to a school (students, staff, fees, exams,
+// attendance, comms, everything) but leaves the school's own account, plan,
+// features and status untouched. Irreversible.
+async function purgeSchoolData(schoolId, password) {
+  assertFullAccess();
+  if (!motherAdmin) throw new Error("Not signed in.");
+  if (!password) throw new Error("Enter your password to confirm.");
+  return sb(`/rest/v1/rpc/purge_school_data`, { method:"POST", body: JSON.stringify({
+    p_actor_username: motherAdmin.username, p_actor_password: password, p_school_id: schoolId,
+  }) });
+}
+// Wipes every data row AND removes the school's own account/record. The
+// school disappears from this app entirely. Irreversible. (The old
+// deleteSchool()/raw DELETE above will actually fail once a school has any
+// data in it, since every school-scoped table references schools(id) — this
+// is the function that actually works for a school that's been used.)
+async function deleteSchoolCompletely(schoolId, password) {
+  assertFullAccess();
+  if (!motherAdmin) throw new Error("Not signed in.");
+  if (!password) throw new Error("Enter your password to confirm.");
+  return sb(`/rest/v1/rpc/delete_school_completely`, { method:"POST", body: JSON.stringify({
+    p_actor_username: motherAdmin.username, p_actor_password: password, p_school_id: schoolId,
+  }) });
+}
+async function getSchool(id) {
+  const rows = await sb(`/rest/v1/schools?${qs({id:`eq.${id}`, select:"*"})}`);
+  return rows[0] || null;
+}
+async function approveSchool(id) {
+  assertFullAccess();
+  const res = await sb(`/rest/v1/schools?id=eq.${id}`, { method:"PATCH", body: JSON.stringify({ status:"active", approved_at: new Date().toISOString() }) });
+  logAudit("approve_school", "school", id, null);
+  return res;
+}
+async function savePlan(schoolId, { plan, billingCycle, amount, expiresAt }) {
+  assertFullAccess();
+  const res = await sb(`/rest/v1/rpc/set_school_plan`, { method:"POST", body: JSON.stringify({
+    p_school_id: schoolId, p_plan: plan || null, p_billing_cycle: billingCycle || null,
+    p_amount: amount === "" ? null : Number(amount), p_expires_at: expiresAt || null,
+  }) });
+  logAudit("set_school_plan", "school", schoolId, `plan=${plan||""} cycle=${billingCycle||""} amount=${amount||""} expires=${expiresAt||""}`);
+  return res;
+}
+async function saveFeatures(schoolId, featuresObj) {
+  assertFullAccess();
+  const res = await sb(`/rest/v1/schools?id=eq.${schoolId}`, { method:"PATCH", body: JSON.stringify({ features: featuresObj }) });
+  logAudit("set_school_features", "school", schoolId, JSON.stringify(featuresObj));
+  return res;
+}
+async function recordPayment(schoolId, { amount, method, note, extendDays }) {
+  assertFullAccess();
+  const res = await sb(`/rest/v1/rpc/record_school_payment`, { method:"POST", body: JSON.stringify({
+    p_school_id: schoolId, p_amount: Number(amount), p_method: method || null, p_note: note || null,
+    p_extend_days: extendDays ? Number(extendDays) : 0,
+  }) });
+  logAudit("record_payment", "school", schoolId, `amount=${amount} method=${method||""}`);
+  return res;
+}
+async function listPayments(schoolId) {
+  return sb(`/rest/v1/school_payments?${qs({school_id:`eq.${schoolId}`, select:"*", order:"created_at.desc", limit:20})}`);
+}
+async function listAdmins(schoolId) {
+  return sb(`/rest/v1/profiles?${qs({school_id:`eq.${schoolId}`, department:"eq.administration", "deleted_at":"is.null", select:"id,full_name,username,phone,whatsapp,email", order:"full_name.asc"})}`);
+}
+async function listNonAdminStaff(schoolId) {
+  return sb(`/rest/v1/profiles?${qs({school_id:`eq.${schoolId}`, department:"neq.administration", role:"eq.staff", "deleted_at":"is.null", select:"id,full_name,username", order:"full_name.asc"})}`);
+}
+async function resetAdminPassword(schoolId, profileId, newPassword) {
+  assertFullAccess();
+  const res = await sb(`/rest/v1/rpc/mother_reset_admin_password`, { method:"POST", body: JSON.stringify({
+    p_school_id: schoolId, p_profile_id: profileId, p_new_password: newPassword,
+  }) });
+  logAudit("reset_admin_password", "profile", profileId, `school=${schoolId}`);
+  return res;
+}
+async function setAdminPrivilege(schoolId, profileId, grant) {
+  assertFullAccess();
+  const res = await sb(`/rest/v1/rpc/set_admin_privilege`, { method:"POST", body: JSON.stringify({
+    p_school_id: schoolId, p_profile_id: profileId, p_grant: grant,
+  }) });
+  logAudit(grant ? "grant_admin" : "revoke_admin", "profile", profileId, `school=${schoolId}`);
+  return res;
+}
+
+// Uses Postgres' exact row count (via the Content-Range header) instead of
+// fetching whole tables, so these stay fast even as schools grow.
+async function countRows(table, params = {}) {
+  const headers = {
+    "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY,
+    "Prefer": "count=exact",
+  };
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${qs(Object.assign({select:"id", limit:"1"}, params))}`, { headers });
+  if (!res.ok) throw new Error("Could not load counts.");
+  const range = res.headers.get("content-range"); // e.g. "0-0/42"
+  return range ? Number(range.split("/")[1]) : 0;
+}
+async function sumColumn(table, column, params = {}) {
+  const rows = await sb(`/rest/v1/${table}?${qs(Object.assign({select:column}, params))}`);
+  return rows.reduce((acc, r) => acc + (Number(r[column]) || 0), 0);
+}
+async function pingDatabase() {
+  const start = performance.now();
+  await sb(`/rest/v1/schools?select=id&limit=1`);
+  return Math.round(performance.now() - start);
+}
+
+async function listAnnouncements() {
+  return sb(`/rest/v1/mother_announcements?${qs({select:"*", order:"created_at.desc", limit:20})}`);
+}
+async function sendAnnouncement({ title, body, targetAll, targetSchoolIds }) {
+  assertFullAccess();
+  const res = await sb(`/rest/v1/mother_announcements`, { method:"POST", body: JSON.stringify({
+    title, body, target_all: !!targetAll, target_school_ids: targetAll ? null : targetSchoolIds,
+  }) });
+  logAudit("send_announcement", "announcement", null, title);
+  return res;
+}
+async function deleteAnnouncement(id) {
+  assertFullAccess();
+  const res = await sb(`/rest/v1/mother_announcements?id=eq.${id}`, { method:"DELETE" });
+  logAudit("delete_announcement", "announcement", id, null);
+  return res;
+}
+async function listSupportRequests(status) {
+  return sb(`/rest/v1/school_support_requests?${qs({select:"*,schools(name)", order:"created_at.desc", limit:50, status: status ? `eq.${status}` : undefined})}`);
+}
+async function resolveSupportRequest(id) {
+  assertFullAccess();
+  const res = await sb(`/rest/v1/school_support_requests?id=eq.${id}`, { method:"PATCH", body: JSON.stringify({ status:"resolved" }) });
+  logAudit("resolve_support_request", "support_request", id, null);
+  return res;
+}
+async function listChangelog() {
+  return sb(`/rest/v1/platform_changelog?${qs({select:"*", order:"created_at.desc", limit:20})}`);
+}
+async function addChangelogEntry(title, description) {
+  assertFullAccess();
+  const res = await sb(`/rest/v1/platform_changelog`, { method:"POST", body: JSON.stringify({ title, description: description || null }) });
+  logAudit("add_changelog", "changelog", null, title);
+  return res;
+}
+async function deleteChangelogEntry(id) {
+  assertFullAccess();
+  const res = await sb(`/rest/v1/platform_changelog?id=eq.${id}`, { method:"DELETE" });
+  logAudit("delete_changelog", "changelog", id, null);
+  return res;
+}
+async function listMaintenanceWindows() {
+  return sb(`/rest/v1/maintenance_windows?${qs({select:"*", order:"starts_at.desc", limit:20})}`);
+}
+async function scheduleMaintenance(startsAt, endsAt, message) {
+  assertFullAccess();
+  const res = await sb(`/rest/v1/maintenance_windows`, { method:"POST", body: JSON.stringify({ starts_at: startsAt, ends_at: endsAt, message: message || null }) });
+  logAudit("schedule_maintenance", "maintenance_window", null, `${startsAt} → ${endsAt}`);
+  return res;
+}
+async function cancelMaintenance(id) {
+  assertFullAccess();
+  const res = await sb(`/rest/v1/maintenance_windows?id=eq.${id}`, { method:"PATCH", body: JSON.stringify({ cancelled: true }) });
+  logAudit("cancel_maintenance", "maintenance_window", id, null);
+  return res;
+}
+async function listBackupLog() {
+  return sb(`/rest/v1/backup_log?${qs({select:"*", order:"created_at.desc", limit:10})}`);
+}
+async function addBackupCheckpoint(note) {
+  assertFullAccess();
+  const res = await sb(`/rest/v1/backup_log`, { method:"POST", body: JSON.stringify({ note: note || null }) });
+  logAudit("add_backup_checkpoint", "backup_log", null, note);
+  return res;
+}
+async function listErrorLog() {
+  return sb(`/rest/v1/platform_error_log?${qs({select:"*,schools(name)", order:"created_at.desc", limit:20})}`);
+}
+
+/* ---------------- ICONS ----------------
+   Small hand-drawn line icons (stroked via .icon svg in CSS) used across the
+   primary workspace nav and every sub-tab rail, so every screen in the app
+   reads as one consistent, "clean workspace" system. */
+const ICONS = {
+  schools:      `<svg viewBox="0 0 24 24"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-6h6v6M9 11h.01M15 11h.01M9 7h.01M15 7h.01"/></svg>`,
+  analytics:    `<svg viewBox="0 0 24 24"><path d="M4 20V10M12 20V4M20 20v-7M3 20h18"/></svg>`,
+  monitoring:   `<svg viewBox="0 0 24 24"><path d="M3 12h4l2 8 4-16 2 8h6"/></svg>`,
+  comms:        `<svg viewBox="0 0 24 24"><path d="M4 4h16v12H8l-4 4V4z"/></svg>`,
+  updates:      `<svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 0 1 14-5.3M20 4v5h-5M20 12a8 8 0 0 1-14 5.3M4 20v-5h5"/></svg>`,
+  security:     `<svg viewBox="0 0 24 24"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3z"/></svg>`,
+  settings:     `<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9L17 7M7 17l-2.1 2.1"/></svg>`,
+  subscription: `<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 9h18M7 15h4"/></svg>`,
+  features:     `<svg viewBox="0 0 24 24"><path d="M4 6h10M4 12h16M4 18h10"/><circle cx="17" cy="6" r="2"/><circle cx="9" cy="18" r="2"/></svg>`,
+  admins:       `<svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M2 20c0-3.3 3-6 7-6s7 2.7 7 6M16 8a3 3 0 1 1 3 3M22 20c0-2.5-2-4.7-5-5.6"/></svg>`,
+  danger:       `<svg viewBox="0 0 24 24"><path d="M12 3 2 20h20L12 3z"/><path d="M12 9v5M12 17h.01"/></svg>`,
+  account:      `<svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg>`,
+  database:     `<svg viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></svg>`,
+};
+
+/* ---------------- SHARED CHROME ----------------
+   Every screen shares the same brand row + account chip (opens Settings)
+   instead of a one-off "Settings" button, and the same pill-shaped nav
+   patterns — a top-level rail for the workspace, and a compact sub-rail
+   wherever a section (a school, or Settings) has its own set of pages. */
+function topBarHtml() {
+  const initial = (motherAdmin?.full_name || motherAdmin?.username || "?").trim().charAt(0).toUpperCase();
+  return `<div class="topbar">
+    <div class="brand">Nova <span>Mother App</span></div>
+    <div class="acct-chip" id="acctChip" title="Account &amp; settings">
+      <span class="acct-avatar">${initial}</span>
+      <span class="acct-name">${motherAdmin?.full_name || motherAdmin?.username || ""}</span>
+    </div>
+  </div>`;
+}
+function wireTopBar() {
+  const chip = document.getElementById("acctChip");
+  if (chip) chip.onclick = () => { view = "settings"; render(); };
+}
+function navTabs(active) {
+  const tabs = [
+    ["dashboard","Schools","schools"],["analytics","Analytics","analytics"],
+    ["monitoring","Monitoring","monitoring"],["comms","Comms","comms"],
+    ["updates","Updates","updates"],["security","Security","security"],
+    ["settings","Settings","settings"],
+  ];
+  return `<div class="tabrail">
+    ${tabs.map(([id,label,icon]) => `<button class="tab-pill ${active===id?'is-active':''}" data-tab="${id}"><span class="icon">${ICONS[icon]}</span>${label}</button>`).join("")}
+  </div>`;
+}
+function wireNavTabs() {
+  document.querySelectorAll("[data-tab]").forEach(btn => {
+    btn.onclick = () => { view = btn.dataset.tab; render(); };
+  });
+}
+// Generic sub-tab rail: tabs = [[id,label,iconKey,danger?], ...]
+function subTabsHtml(tabs, active, attr) {
+  return `<div class="subtabrail">
+    ${tabs.map(([id,label,icon,danger]) => `<button class="subtab-pill ${danger?'is-danger':''} ${active===id?'is-active':''}" data-${attr}="${id}">${icon?`<span class="icon">${ICONS[icon]}</span>`:''}${label}</button>`).join("")}
+  </div>`;
+}
+function wireSubTabs(attr, onSelect) {
+  document.querySelectorAll(`[data-${attr}]`).forEach(btn => {
+    btn.onclick = () => onSelect(btn.dataset[attr]);
+  });
+}
+
+function el(html){ const d=document.createElement("div"); d.innerHTML=html.trim(); return d.firstChild; }
+function app(){ return document.getElementById("app"); }
+
+let authMode = "login"; // "login" or "create"
+function renderLogin() {
+  app().innerHTML = `
+    <div class="login-wrap"><div class="login-card">
+      <div class="brand" style="text-align:center;margin-bottom:16px;">Nova <span>Mother App</span></div>
+      <div id="loginMsg"></div>
+      <div id="loginForm"></div>
+      <div class="tiny-note" style="text-align:center;margin-top:12px;">${authMode==="login" ? `New admin? <span class="link-btn" id="toCreate">Create account</span>` : `Already an admin? <span class="link-btn" id="toLogin">Log in</span>`}</div>
+      <details style="margin-top:18px;"><summary>First time setup</summary>
+        <p class="tiny-note">Run this once in Supabase → SQL Editor, then create your first mother-admin account with a single insert (shown in a comment at the bottom of the script), since nothing exists yet to prove you're an admin. Every admin after that can be added from here or from Settings inside the app.</p>
+        <pre>${MOTHER_SETUP_SQL}</pre>
+      </details>
+      <details style="margin-top:10px;"><summary>Upgrade: approvals, billing &amp; admin management</summary>
+        <p class="tiny-note">Run this once too (after the script above) to unlock school approval, subscriptions/billing, and administrator management. Safe to re-run.</p>
+        <pre>${MOTHER_SUITE_SQL}</pre>
+      </details>
+      <details style="margin-top:10px;"><summary>Upgrade: monitoring, analytics, communications &amp; updates</summary>
+        <p class="tiny-note">Run this once too (after the two scripts above) to unlock System Monitoring, richer Analytics, the Communication Center, and Updates &amp; Maintenance. Safe to re-run.</p>
+        <pre>${MOTHER_OPS_SQL}</pre>
+      </details>
+      <details style="margin-top:10px;"><summary>Upgrade: admin roles, audit log &amp; login monitoring</summary>
+        <p class="tiny-note">Run this once too (after the three scripts above) to unlock the Security tab: admin roles/permissions, a full audit log, and login-activity monitoring. Safe to re-run.</p>
+        <pre>${MOTHER_SECURITY_SQL}</pre>
+      </details>
+      <details style="margin-top:10px;"><summary>Upgrade: feature/module control per school</summary>
+        <p class="tiny-note">Run this once too to unlock the "Features &amp; Modules" panel on each school's page — lets you turn sections like Fees, Exams or Comms on/off per school. Safe to re-run.</p>
+        <pre>${SCHOOL_FEATURES_SQL}</pre>
+      </details>
+      <details style="margin-top:10px;"><summary>Upgrade: permanently clear/delete a school's data</summary>
+        <p class="tiny-note">Run this once too (needs the admin-roles script above already run) to unlock the Danger Zone on each school's page — clear all of a school's data, or delete the school and its data completely. Safe to re-run.</p>
+        <pre>${SCHOOL_DANGER_ZONE_SQL}</pre>
+      </details>
+    </div></div>`;
+  const formDiv = document.getElementById("loginForm");
+  if (authMode === "login") {
+    formDiv.innerHTML = `
+      <div class="field"><label>Username</label><input id="username" autocapitalize="none" /></div>
+      <div class="field"><label>Password</label><input id="password" type="password" /></div>
+      <label class="row" style="gap:8px;align-items:center;font-size:13px;font-weight:600;color:var(--ink-soft);margin:0 0 12px;">
+        <input id="remember" type="checkbox" style="width:16px;height:16px;" /> Remember me on this device
+      </label>
+      <button class="btn btn-primary" id="loginBtn" style="width:100%;">Log in</button>
+    `;
+    document.getElementById("loginBtn").onclick = async () => {
+      const msg = document.getElementById("loginMsg"); msg.innerHTML = "";
+      try {
+        await motherLogin(document.getElementById("username").value.trim(), document.getElementById("password").value, document.getElementById("remember").checked);
+        render();
+      } catch(e) { msg.innerHTML = `<div class="err">${e.message}</div>`; }
+    };
+  } else {
+    formDiv.innerHTML = `
+      <div class="tiny-note" style="margin-bottom:10px;">A new admin gets full control over every school, so this still needs an existing admin's login as proof — enter theirs below to vouch for the new account.</div>
+      <div class="field"><label>New admin's username</label><input id="na_username" autocapitalize="none" /></div>
+      <div class="field"><label>New admin's full name</label><input id="na_fullname" /></div>
+      <div class="field"><label>New admin's password</label><input id="na_password" type="password" placeholder="At least 6 characters" /></div>
+      <div class="field" style="margin-top:10px;"><label>Existing admin's username (to vouch)</label><input id="na_creatorUsername" autocapitalize="none" /></div>
+      <div class="field"><label>Existing admin's password</label><input id="na_creatorPassword" type="password" /></div>
+      <button class="btn btn-primary" id="createBtn" style="width:100%;">Create account</button>
+    `;
+    document.getElementById("createBtn").onclick = async () => {
+      const msg = document.getElementById("loginMsg"); msg.innerHTML = "";
+      const newUsername = document.getElementById("na_username").value.trim();
+      const newFullName = document.getElementById("na_fullname").value.trim();
+      const newPassword = document.getElementById("na_password").value;
+      const creatorUsername = document.getElementById("na_creatorUsername").value.trim();
+      const creatorPassword = document.getElementById("na_creatorPassword").value;
+      try {
+        if (!newUsername || !newPassword) throw new Error("New admin's username and password are required.");
+        if (newPassword.length < 6) throw new Error("New password must be at least 6 characters.");
+        if (!creatorUsername || !creatorPassword) throw new Error("Enter an existing admin's username and password to vouch for this account.");
+        await sb(`/rest/v1/rpc/create_mother_admin`, { method:"POST", body: JSON.stringify({
+          p_creator_username: creatorUsername, p_creator_password: creatorPassword,
+          p_new_username: newUsername, p_new_password: newPassword, p_new_full_name: newFullName || null,
+        }) });
+        msg.innerHTML = `<div class="msg-ok">Account created. You can log in now.</div>`;
+        authMode = "login"; render();
+      } catch(e) { msg.innerHTML = `<div class="err">${e.message}</div>`; }
+    };
+  }
+  const toCreate = document.getElementById("toCreate");
+  if (toCreate) toCreate.onclick = () => { authMode = "create"; render(); };
+  const toLogin = document.getElementById("toLogin");
+  if (toLogin) toLogin.onclick = () => { authMode = "login"; render(); };
+}
+
+async function renderDashboard() {
+  app().innerHTML = `
+    <div class="wrap">
+      ${topBarHtml()}
+      ${navTabs("dashboard")}
+      ${!isFullAccess() ? `<div class="card"><div class="tiny-note">Your account is read-only — you can view schools but can't register, approve, suspend or delete them.</div></div>` : ""}
+      <div class="card">
+        <div class="field" style="margin-bottom:8px;"><label>New school name</label><input id="newSchoolName" placeholder="e.g. Meridian Academy" /></div>
+        <button class="btn btn-primary" id="createSchoolBtn">Register school</button>
+        <div class="tiny-note">Schools you register here go straight to Active — they're already vetted by you. Schools that self-register from the app's signup screen land here as Pending until you approve them.</div>
+        <div id="createMsg"></div>
+      </div>
+      <div class="card" id="pendingCard" style="display:none;">
+        <div class="section-title">Pending approval</div>
+        <div id="pendingList"></div>
+      </div>
+      <div class="card">
+        <div class="section-title">Schools</div>
+        <div id="schoolList">Loading…</div>
+      </div>
+    </div>`;
+  wireTopBar();
+  wireNavTabs();
+  document.getElementById("createSchoolBtn").onclick = async () => {
+    const name = document.getElementById("newSchoolName").value.trim();
+    const msg = document.getElementById("createMsg"); msg.innerHTML = "";
+    if (!name) { msg.innerHTML = `<div class="err">Enter a school name.</div>`; return; }
+    try {
+      await createSchool(name);
+      document.getElementById("newSchoolName").value = "";
+      msg.innerHTML = `<div class="msg-ok">School registered and active. It'll now show up as an option on the app's signup screen.</div>`;
+      loadSchools();
+    } catch(e) { msg.innerHTML = `<div class="err">${e.message}</div>`; }
+  };
+  loadSchools();
+}
+
+async function loadSchools() {
+  const listEl = document.getElementById("schoolList");
+  const pendingCard = document.getElementById("pendingCard");
+  const pendingList = document.getElementById("pendingList");
+  try {
+    const schools = await listSchools();
+    if (!schools.length) { listEl.innerHTML = `<div class="tiny-note">No schools registered yet.</div>`; if (pendingCard) pendingCard.style.display = "none"; return; }
+
+    const pending = schools.filter(s => s.status === "pending");
+    if (pendingCard && pendingList) {
+      if (pending.length) {
+        pendingCard.style.display = "";
+        pendingList.innerHTML = pending.map(s => `
+          <div class="school-row">
+            <div>
+              <div class="school-name">${s.name}</div>
+              <div class="tiny-note">${[s.motto, s.location].filter(Boolean).join(" · ") || "Self-registered · " + new Date(s.created_at).toLocaleDateString()}</div>
+            </div>
+            <div class="row">
+              <button class="btn btn-primary btn-sm" data-approve="${s.id}">Approve</button>
+              <button class="btn btn-danger btn-sm" data-reject="${s.id}">Reject</button>
+            </div>
+          </div>`).join("");
+        pendingList.querySelectorAll("[data-approve]").forEach(btn => {
+          btn.onclick = async (e) => { e.stopPropagation(); await approveSchool(btn.dataset.approve); loadSchools(); };
+        });
+        pendingList.querySelectorAll("[data-reject]").forEach(btn => {
+          btn.onclick = async (e) => {
+            e.stopPropagation();
+            if (!confirm("Reject and delete this school? Its Administrator account and any data already created will be orphaned — do this only for schools you don't want on the platform.")) return;
+            await deleteSchool(btn.dataset.reject); loadSchools();
+          };
+        });
+      } else { pendingCard.style.display = "none"; }
+    }
+
+    const rest = schools.filter(s => s.status !== "pending");
+    if (!rest.length) { listEl.innerHTML = `<div class="tiny-note">No approved schools yet.</div>`; return; }
+    listEl.innerHTML = rest.map(s => `
+      <div class="school-row clickable" data-open="${s.id}">
+        <div>
+          <div class="school-name">${s.name}</div>
+          <div class="tiny-note">${[s.motto, s.location, s.size_range].filter(Boolean).join(" · ") || new Date(s.created_at).toLocaleDateString()}</div>
+        </div>
+        <div class="row" style="flex-wrap:wrap;justify-content:flex-end;gap:6px;">
+          ${statusBadge(s.status)}
+          ${s.status==='active' ? subscriptionBadge(s) : ""}
+        </div>
+      </div>`).join("");
+    listEl.querySelectorAll("[data-open]").forEach(row => {
+      row.onclick = () => { currentSchoolId = row.dataset.open; schoolSubTab = "subscription"; view = "schoolDetail"; render(); };
+    });
+  } catch(e) {
+    listEl.innerHTML = `<div class="err">${e.message}</div>`;
+  }
+}
+
+function renderSettings() {
+  app().innerHTML = `
+    <div class="wrap">
+      ${topBarHtml()}
+      <div class="back-link" id="backBtn">‹ Back to schools</div>
+      ${subTabsHtml(SETTINGS_TABS, settingsSubTab, "settingstab")}
+      <div id="settingsTabContent"></div>
+    </div>`;
+  document.getElementById("backBtn").onclick = () => { view = "dashboard"; render(); };
+  wireTopBar();
+  wireSubTabs("settingstab", (id) => { settingsSubTab = id; renderSettings(); });
+
+  if (settingsSubTab === "admins") renderSettingsAdminsTab();
+  else if (settingsSubTab === "database") renderSettingsDatabaseTab();
+  else if (settingsSubTab === "plans") renderSettingsPlansTab();
+  else renderSettingsAccountTab();
+}
+
+function renderSettingsAccountTab() {
+  const mount = document.getElementById("settingsTabContent");
+  mount.innerHTML = `
+    <div class="card">
+      <div class="section-title">Account</div>
+      <div class="tiny-note" style="margin-bottom:12px;">Logged in as <strong>${motherAdmin.full_name || motherAdmin.username}</strong> (${motherAdmin.username}) · ${roleBadge(motherAdmin.role)}</div>
+      <button class="btn btn-danger" id="logoutBtn">Log out</button>
+    </div>`;
+  document.getElementById("logoutBtn").onclick = motherLogout;
+}
+
+function renderSettingsAdminsTab() {
+  const mount = document.getElementById("settingsTabContent");
+  mount.innerHTML = isFullAccess() ? `
+    <div class="card">
+      <div class="section-title">Add another mother admin</div>
+      <div class="tiny-note" style="margin-bottom:10px;">Full-access admins can register, suspend and delete schools and manage other admins — only add people you trust with that. Add a read-only admin instead if they just need visibility. To edit or deactivate an existing admin, see the Security tab.</div>
+      <div id="addAdminMsg"></div>
+      <div class="field"><label>New admin's username</label><input id="na_username" autocapitalize="none" /></div>
+      <div class="field"><label>New admin's full name</label><input id="na_fullname" /></div>
+      <div class="field"><label>New admin's password</label><input id="na_password" type="password" placeholder="At least 6 characters" /></div>
+      <div class="field"><label>Role</label>
+        <select id="na_role">
+          <option value="full_access">Full access</option>
+          <option value="read_only">Read-only</option>
+        </select>
+      </div>
+      <div class="field"><label>Your password (to confirm it's really you)</label><input id="na_yourpass" type="password" /></div>
+      <button class="btn btn-primary" id="addAdminBtn">Add admin</button>
+    </div>` : `
+    <div class="card">
+      <div class="section-title">Add another mother admin</div>
+      <div class="tiny-note">Your account is read-only, so adding admins is handled by a full-access admin. See the Security tab for the list of admins.</div>
+    </div>`;
+
+  const addAdminBtn = document.getElementById("addAdminBtn");
+  if (addAdminBtn) addAdminBtn.onclick = async () => {
+    const msg = document.getElementById("addAdminMsg"); msg.innerHTML = "";
+    const newUsername = document.getElementById("na_username").value.trim();
+    const newFullName = document.getElementById("na_fullname").value.trim();
+    const newPassword = document.getElementById("na_password").value;
+    const newRole = document.getElementById("na_role").value;
+    const creatorPassword = document.getElementById("na_yourpass").value;
+    try {
+      if (!newUsername || !newPassword) throw new Error("Username and password are required.");
+      if (newPassword.length < 6) throw new Error("New password must be at least 6 characters.");
+      if (!creatorPassword) throw new Error("Confirm your own password.");
+      await addMotherAdmin({ creatorPassword, newUsername, newPassword, newFullName, newRole });
+      msg.innerHTML = `<div class="msg-ok">Admin added. They can log in now.</div>`;
+      document.getElementById("na_username").value = "";
+      document.getElementById("na_fullname").value = "";
+      document.getElementById("na_password").value = "";
+      document.getElementById("na_yourpass").value = "";
+    } catch(e) { msg.innerHTML = `<div class="err">${e.message}</div>`; }
+  };
+}
+
+// Read-only comparison matrix: built straight from PLAN_OPTIONS, FEATURE_MODULES
+// and PLAN_FEATURE_DEFAULTS, so it can never drift out of sync with what
+// "Apply defaults for plan…" actually sets on a school's Features tab. This
+// shows *defaults only* — a given school's live features can still differ
+// if a mother admin hand-toggled a module (see that school's Features tab).
+function renderSettingsPlansTab() {
+  const mount = document.getElementById("settingsTabContent");
+  const check = `<span style="color:var(--teal-dark);font-weight:800;">✓</span>`;
+  const cross = `<span style="color:var(--slate);">—</span>`;
+  mount.innerHTML = `
+    <div class="card">
+      <div class="section-title">Plans &amp; feature matrix</div>
+      <div class="tiny-note" style="margin-bottom:12px;">What each plan turns on by default when applied from a school's Features &amp; Modules tab. This is a reference view only — nothing here is editable. A school's actual access is whatever is saved on its own Features tab, which can be hand-adjusted per school regardless of plan.</div>
+      <div class="table-scroll"><table class="mini-table">
+        <thead><tr>
+          <th>Module</th>
+          ${PLAN_OPTIONS.map(p => `<th>${p}</th>`).join("")}
+        </tr></thead>
+        <tbody>
+          ${FEATURE_MODULES.map(m => `
+            <tr>
+              <td style="white-space:normal;font-weight:700;color:var(--navy);">${m.label}</td>
+              ${PLAN_OPTIONS.map(p => {
+                const defaults = PLAN_FEATURE_DEFAULTS[p] || {};
+                const on = defaults[m.id] === true;
+                return `<td style="text-align:center;">${on ? check : cross}</td>`;
+              }).join("")}
+            </tr>`).join("")}
+        </tbody>
+      </table></div>
+      <hr class="divider" />
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        ${PLAN_OPTIONS.map(p => `
+          <div class="row" style="align-items:flex-start;gap:8px;">
+            <span class="badge badge-deactivated" style="flex-shrink:0;">${p}</span>
+            <span class="tiny-note" style="margin:0;">${PLAN_DESCRIPTIONS[p] || ""}</span>
+          </div>`).join("")}
+      </div>
+      <div class="tiny-note" style="margin-top:12px;">Home, Account, Settings and Trash aren't listed here — every school always has those, on every plan.</div>
+    </div>`;
+}
+
+function renderSettingsDatabaseTab() {
+  const mount = document.getElementById("settingsTabContent");
+  mount.innerHTML = `
+    <div class="card">
+      <div class="section-title">Database setup</div>
+      <div class="tiny-note" style="margin-bottom:8px;">One-time SQL to run in Supabase → SQL Editor. Only needed if the matching tab or panel errors out.</div>
+      <details><summary>Upgrade: approvals, billing &amp; admin management</summary>
+        <p class="tiny-note">If schools aren't showing a Pending state, or Subscription/Administrator sections error out, run this once in Supabase → SQL Editor.</p>
+        <pre>${MOTHER_SUITE_SQL}</pre>
+      </details>
+      <details style="margin-top:8px;"><summary>Upgrade: monitoring, analytics, communications &amp; updates</summary>
+        <p class="tiny-note">If the Analytics, Monitoring, Communications, or Updates tabs error out, run this once in Supabase → SQL Editor.</p>
+        <pre>${MOTHER_OPS_SQL}</pre>
+      </details>
+      <details style="margin-top:8px;"><summary>Upgrade: admin roles, audit log &amp; login monitoring</summary>
+        <p class="tiny-note">If the Security tab errors out, run this once in Supabase → SQL Editor.</p>
+        <pre>${MOTHER_SECURITY_SQL}</pre>
+      </details>
+      <details style="margin-top:8px;"><summary>Upgrade: feature/module control per school</summary>
+        <p class="tiny-note">If the "Features &amp; Modules" tab on a school's page errors out, run this once in Supabase → SQL Editor.</p>
+        <pre>${SCHOOL_FEATURES_SQL}</pre>
+      </details>
+      <details style="margin-top:8px;"><summary>Upgrade: permanently clear/delete a school's data</summary>
+        <p class="tiny-note">If the Danger Zone on a school's page errors out, run this once in Supabase → SQL Editor.</p>
+        <pre>${SCHOOL_DANGER_ZONE_SQL}</pre>
+      </details>
+    </div>`;
+}
+
+// Exactly these four categories — no "Custom" plan tier. A school's modules
+// can still be hand-toggled from the Features tab regardless of which of
+// these four plans it's on, so a separate "Custom" plan name isn't needed.
+const PLAN_OPTIONS = ["Trial","Basic","Standard","Premium"];
+const PLAN_DESCRIPTIONS = {
+  Trial:    "Free — basic features for evaluation.",
+  Basic:    "Paid — essential school management features.",
+  Standard: "Paid — extended features with additional capabilities.",
+  Premium:  "Paid — full access to all modules and features.",
+};
+const CYCLE_OPTIONS = [["monthly","Monthly"],["termly","Termly"],["yearly","Yearly"]];
+const METHOD_OPTIONS = [["cash","Cash"],["bank","Bank transfer"],["mobile_money","Mobile Money"],["cheque","Cheque"],["other","Other"]];
+
+/* ---------------- FEATURE / MODULE CONTROL ----------------
+   These ids must match the GATABLE_NAV_IDS list in the school app exactly —
+   they're the sections a school sees in its sidebar/bottom nav. Home,
+   Account, Settings and Trash are never listed here: they're core to every
+   school's own account and can't be switched off from here.
+   schools.features is a jsonb map like {"fees": true, "exams": false, ...}.
+   A school app treats a missing key as "on", so an empty/unset features
+   column (the default for every existing school) changes nothing until a
+   mother admin actually opens this panel and saves. */
+const FEATURE_MODULES = [
+  { id: "health",     label: "School Health" },
+  { id: "students",   label: "Students" },
+  { id: "teachers",   label: "Staff" },
+  { id: "attendance", label: "Attendance" },
+  { id: "fees",       label: "Fees" },
+  { id: "exams",      label: "Exams" },
+  { id: "academic",   label: "Setup (terms/classes/subjects)" },
+  { id: "comms",      label: "Comms (announcements/meetings)" },
+];
+// What a fresh plan turns on by default. Each tier is a strict superset of
+// the one below it, so Premium is the only plan with every module on — as
+// described in the plan list. Applying defaults always produces a
+// FULLY-SPECIFIED map (every module id set true or false), so the school app
+// never has to guess — only truly unconfigured schools (features still `{}`)
+// fall back to "everything on". An admin can still hand-toggle any module
+// afterward regardless of plan — these are just starting points.
+const PLAN_FEATURE_DEFAULTS = {
+  // Trial (Free): just enough to evaluate the core workflow — enrollment,
+  // staff records, attendance.
+  Trial:    { students:true, teachers:true, attendance:true, health:false, fees:false, exams:false, academic:false, comms:false },
+  // Basic (Paid): adds the day-to-day essentials — fees, term/class setup,
+  // parent comms.
+  Basic:    { students:true, teachers:true, attendance:true, health:false, fees:true,  exams:false, academic:true,  comms:true  },
+  // Standard (Paid): adds exams/report cards on top of Basic.
+  Standard: { students:true, teachers:true, attendance:true, health:false, fees:true,  exams:true,  academic:true,  comms:true  },
+  // Premium (Paid): full access to every module, including School Health.
+  Premium:  { students:true, teachers:true, attendance:true, health:true,  fees:true,  exams:true,  academic:true,  comms:true  },
+};
+function planDefaultFeatures(plan) {
+  return PLAN_FEATURE_DEFAULTS[plan] || null; // null for an unrecognized/no plan — caller decides fallback
+}
+
+function statusActionsHtml(s) {
+  if (s.status === "pending") return `
+    <button class="btn btn-primary" data-action="approve">Approve school</button>
+    <button class="btn btn-danger" data-action="reject">Reject &amp; delete</button>`;
+  // Suspend and Deactivate are independent toggles, not a shared "Reactivate":
+  // each button reflects and flips just its own half of the status, so an
+  // admin can tell at a glance which state a school is in and undo just that.
+  const isSuspended = s.status === "suspended";
+  const isDeactivated = s.status === "deactivated";
+  return `
+    <button class="btn ${isSuspended ? 'btn-primary' : 'btn-ghost'}" data-action="toggle-suspend">${isSuspended ? "Unsuspend" : "Suspend"}</button>
+    <button class="btn ${isDeactivated ? 'btn-primary' : 'btn-ghost'}" data-action="toggle-deactivate">${isDeactivated ? "Activate" : "Deactivate"}</button>
+    <button class="btn btn-danger" data-action="delete">Delete</button>`;
+}
+
+async function renderSchoolDetail() {
+  app().innerHTML = `<div class="wrap">${topBarHtml()}<div class="tiny-note">Loading…</div></div>`;
+  wireTopBar();
+  let s;
+  try { s = await getSchool(currentSchoolId); }
+  catch(e) { app().innerHTML = `<div class="wrap"><div class="err">${e.message}</div></div>`; return; }
+  if (!s) { app().innerHTML = `<div class="wrap"><div class="err">School not found.</div></div>`; return; }
+
+  app().innerHTML = `
+    <div class="wrap">
+      ${topBarHtml()}
+      <div class="back-link" id="backBtn">‹ Back to schools</div>
+      <div class="card">
+        <div class="row" style="justify-content:space-between;align-items:flex-start;">
+          <div>
+            <div class="school-name" style="font-size:17px;">${s.name}</div>
+            <div class="tiny-note">${[s.motto, s.location, s.size_range].filter(Boolean).join(" · ") || "No profile details yet"}</div>
+            <div class="tiny-note">Registered ${new Date(s.created_at).toLocaleDateString()}${s.approved_at ? " · Approved " + new Date(s.approved_at).toLocaleDateString() : ""}</div>
+          </div>
+          <div>${statusBadge(s.status)}</div>
+        </div>
+        <div id="statusMsg"></div>
+        <div class="row" style="flex-wrap:wrap;margin-top:12px;">${statusActionsHtml(s)}</div>
+      </div>
+
+      ${subTabsHtml(SCHOOL_TABS, schoolSubTab, "schooltab")}
+      <div id="schoolTabContent"></div>
+    </div>`;
+
+  document.getElementById("backBtn").onclick = () => { view = "dashboard"; render(); };
+  wireTopBar();
+  wireSubTabs("schooltab", (id) => { schoolSubTab = id; render(); });
+
+  // Status actions (approve / reject / suspend-toggle / deactivate-toggle / delete) —
+  // always visible above the tabs since they apply to the whole school record.
+  app().querySelectorAll("[data-action]").forEach(btn => {
+    btn.onclick = async () => {
+      const action = btn.dataset.action;
+      const msg = document.getElementById("statusMsg"); msg.innerHTML = "";
+      try {
+        if (action === "approve") { await approveSchool(s.id); }
+        else if (action === "reject" || action === "delete") {
+          // Deleting a school that has ANY data (even a self-registered
+          // school's first admin account) fails as a plain row delete, since
+          // every school-scoped table references schools(id) — that's what
+          // the Danger Zone's "Delete school completely" does properly,
+          // wiping the data first. Send them there instead of failing here.
+          schoolDangerNotice = `To delete "${s.name}", use "Delete school completely" below — it safely clears the school's data first.`;
+          schoolSubTab = "danger";
+          render();
+          return;
+        } else if (action === "toggle-suspend") {
+          await setSchoolStatus(s.id, s.status === "suspended" ? "active" : "suspended");
+        } else if (action === "toggle-deactivate") {
+          if (s.status === "deactivated") { await setSchoolStatus(s.id, "active"); }
+          else {
+            if (!confirm("Deactivate this school? Its accounts will no longer be able to log in.")) return;
+            await setSchoolStatus(s.id, "deactivated");
+          }
+        }
+        renderSchoolDetail();
+      } catch(e) { msg.innerHTML = `<div class="err">${e.message}</div>`; }
+    };
+  });
+
+  if (schoolSubTab === "features") renderSchoolFeaturesTab(s);
+  else if (schoolSubTab === "admins") renderSchoolAdminsTab(s);
+  else if (schoolSubTab === "danger") renderSchoolDangerTab(s);
+  else renderSchoolSubscriptionTab(s);
+}
+
+function renderSchoolSubscriptionTab(s) {
+  const mount = document.getElementById("schoolTabContent");
+  mount.innerHTML = `
+    <div class="card">
+      <div class="section-title">Subscription &amp; billing</div>
+      <div id="planMsg"></div>
+      <div class="grid2">
+        <div class="field"><label>Plan</label>
+          <select id="planSelect">
+            <option value="">— None —</option>
+            ${PLAN_OPTIONS.map(p=>`<option value="${p}" ${s.plan===p?'selected':''}>${p} — ${PLAN_DESCRIPTIONS[p]}</option>`).join("")}
+            ${s.plan && !PLAN_OPTIONS.includes(s.plan) ? `<option value="${s.plan}" selected>${s.plan} (legacy — pick a current plan to replace it)</option>` : ""}
+          </select>
+        </div>
+        <div class="field"><label>Billing cycle</label>
+          <select id="cycleSelect">
+            <option value="">— None —</option>
+            ${CYCLE_OPTIONS.map(([v,l])=>`<option value="${v}" ${s.billing_cycle===v?'selected':''}>${l}</option>`).join("")}
+          </select>
+        </div>
+        <div class="field"><label>Amount (per cycle)</label><input id="planAmount" type="number" min="0" value="${s.subscription_amount ?? ''}" /></div>
+        <div class="field"><label>Expires on</label><input id="planExpiry" type="date" value="${s.subscription_expires_at || ''}" /></div>
+      </div>
+      <button class="btn btn-primary btn-sm" id="savePlanBtn">Save plan</button>
+      <div style="margin-top:10px;">${subscriptionBadge(s)}</div>
+      <hr class="divider" />
+      <div style="font-weight:700;font-size:13px;margin-bottom:8px;">Record a payment</div>
+      <div class="grid2">
+        <div class="field"><label>Amount received</label><input id="payAmount" type="number" min="0" /></div>
+        <div class="field"><label>Method</label>
+          <select id="payMethod">${METHOD_OPTIONS.map(([v,l])=>`<option value="${v}">${l}</option>`).join("")}</select>
+        </div>
+        <div class="field"><label>Extend subscription by (days)</label><input id="payExtend" type="number" min="0" value="30" /></div>
+        <div class="field"><label>Note (optional)</label><input id="payNote" placeholder="e.g. Term 2 invoice" /></div>
+      </div>
+      <button class="btn btn-primary btn-sm" id="recordPayBtn">Record payment</button>
+      <div id="payMsg"></div>
+      <hr class="divider" />
+      <div style="font-weight:700;font-size:13px;margin-bottom:6px;">Payment history</div>
+      <div id="paymentHistory" class="tiny-note">Loading…</div>
+    </div>`;
+
+  document.getElementById("savePlanBtn").onclick = async () => {
+    const msg = document.getElementById("planMsg"); msg.innerHTML = "";
+    try {
+      await savePlan(s.id, {
+        plan: document.getElementById("planSelect").value,
+        billingCycle: document.getElementById("cycleSelect").value,
+        amount: document.getElementById("planAmount").value,
+        expiresAt: document.getElementById("planExpiry").value,
+      });
+      msg.innerHTML = `<div class="msg-ok">Plan saved.</div>`;
+      renderSchoolDetail();
+    } catch(e) { msg.innerHTML = `<div class="err">${e.message}</div>`; }
+  };
+  document.getElementById("recordPayBtn").onclick = async () => {
+    const msg = document.getElementById("payMsg"); msg.innerHTML = "";
+    const amount = document.getElementById("payAmount").value;
+    if (!amount || Number(amount) <= 0) { msg.innerHTML = `<div class="err">Enter a valid amount.</div>`; return; }
+    try {
+      await recordPayment(s.id, {
+        amount, method: document.getElementById("payMethod").value,
+        note: document.getElementById("payNote").value, extendDays: document.getElementById("payExtend").value,
+      });
+      msg.innerHTML = `<div class="msg-ok">Payment recorded.</div>`;
+      renderSchoolDetail();
+    } catch(e) { msg.innerHTML = `<div class="err">${e.message}</div>`; }
+  };
+
+  loadPaymentHistory(s.id);
+}
+
+function renderSchoolFeaturesTab(s) {
+  const mount = document.getElementById("schoolTabContent");
+  mount.innerHTML = `
+    <div class="card">
+      <div class="section-title">Features &amp; modules</div>
+      <div class="tiny-note" style="margin-bottom:10px;">Choose which sections this school can see and use. Students, Fees and Comms also control the matching tab in parents' own app (My Children, Fees, Notifications) — everything else here is staff-only. Changes take effect automatically — usually within a minute, or as soon as they reopen the app — no re-login needed.</div>
+      ${s.plan ? `<div class="tiny-note" style="margin-bottom:10px;">Current plan: <strong>${s.plan}</strong>${PLAN_DESCRIPTIONS[s.plan] ? ` — ${PLAN_DESCRIPTIONS[s.plan]}` : ""}</div>` : ""}
+      <div id="featuresMsg"></div>
+      <div class="row" style="margin-bottom:10px;flex-wrap:wrap;">
+        <select id="featurePlanDefault" style="flex:1;min-width:180px;">
+          <option value="">Apply defaults for plan…</option>
+          ${PLAN_OPTIONS.map(p=>`<option value="${p}">${p} — ${PLAN_DESCRIPTIONS[p]}</option>`).join("")}
+        </select>
+        <button class="btn btn-ghost btn-sm" id="applyPlanDefaultsBtn">Apply</button>
+      </div>
+      <div id="featureToggles">
+        ${FEATURE_MODULES.map(m => {
+          const on = (s.features && Object.prototype.hasOwnProperty.call(s.features, m.id)) ? s.features[m.id] !== false : true;
+          return `<div class="admin-row"><div style="font-weight:600;">${m.label}</div>
+            <div class="toggle-row" data-feature-row="${m.id}">
+              <span class="toggle-state">${on?'Enabled':'Disabled'}</span>
+              <label class="toggle-switch">
+                <input type="checkbox" data-feature="${m.id}" ${on?'checked':''}/>
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+          </div>`;
+        }).join("")}
+      </div>
+      <button class="btn btn-primary btn-sm" id="saveFeaturesBtn" style="margin-top:10px;">Save features</button>
+    </div>`;
+
+  const featureBox = document.getElementById("featureToggles");
+  const setToggleState = (cb, on) => {
+    cb.checked = on;
+    const row = cb.closest("[data-feature-row]");
+    const stateEl = row ? row.querySelector(".toggle-state") : null;
+    if (stateEl) stateEl.textContent = on ? "Enabled" : "Disabled";
+  };
+  featureBox.querySelectorAll("[data-feature]").forEach(cb => {
+    cb.onchange = () => setToggleState(cb, cb.checked);
+  });
+  document.getElementById("applyPlanDefaultsBtn").onclick = () => {
+    const plan = document.getElementById("featurePlanDefault").value;
+    if (!plan) return;
+    const defaults = planDefaultFeatures(plan) || {};
+    featureBox.querySelectorAll("[data-feature]").forEach(cb => {
+      const id = cb.dataset.feature;
+      const on = Object.prototype.hasOwnProperty.call(defaults, id) ? defaults[id] !== false : true;
+      setToggleState(cb, on);
+    });
+    document.getElementById("featuresMsg").innerHTML = `<div class="msg-ok">${plan} defaults applied below — click "Save features" to make it live.</div>`;
+  };
+  document.getElementById("saveFeaturesBtn").onclick = async () => {
+    const msg = document.getElementById("featuresMsg"); msg.innerHTML = "";
+    const featuresObj = {};
+    featureBox.querySelectorAll("[data-feature]").forEach(cb => { featuresObj[cb.dataset.feature] = cb.checked; });
+    try {
+      await saveFeatures(s.id, featuresObj);
+      msg.innerHTML = `<div class="msg-ok">Features saved — this school's app will pick up the change automatically, usually within a minute.</div>`;
+      renderSchoolDetail();
+    } catch(e) { msg.innerHTML = `<div class="err">${e.message}</div>`; }
+  };
+}
+
+function renderSchoolAdminsTab(s) {
+  const mount = document.getElementById("schoolTabContent");
+  mount.innerHTML = `
+    <div class="card">
+      <div class="section-title">Administrators</div>
+      <div class="tiny-note" style="margin-bottom:10px;">Accounts with full access to this school's own system.</div>
+      <div id="adminMsg"></div>
+      <div id="adminList">Loading…</div>
+      <hr class="divider" />
+      <div style="font-weight:700;font-size:13px;margin-bottom:8px;">Grant admin to an existing staff member</div>
+      <div class="row">
+        <select id="grantSelect" style="flex:1;"><option value="">Loading staff…</option></select>
+        <button class="btn btn-primary btn-sm" id="grantBtn">Grant</button>
+      </div>
+    </div>`;
+  loadAdmins(s.id);
+}
+
+function renderSchoolDangerTab(s) {
+  const mount = document.getElementById("schoolTabContent");
+  const notice = schoolDangerNotice;
+  schoolDangerNotice = null;
+  mount.innerHTML = `
+    <div class="card card-danger" id="dangerZoneCard">
+      <div class="section-title" style="color:var(--red-dark);">Danger zone</div>
+      <div class="tiny-note" style="margin-bottom:10px;">These actions permanently delete data. There is no undo, and no soft-delete/Trash to recover from — unlike everything else in this app. Type the school's exact name below to unlock either button.</div>
+      <div id="dangerMsg">${notice ? `<div class="err">${notice}</div>` : ""}</div>
+      <div class="field"><label>Type "${s.name}" to confirm</label><input id="dangerConfirmName" placeholder="${s.name}" /></div>
+      <div class="field"><label>Your password</label><input id="dangerConfirmPw" type="password" /></div>
+      <div class="row" style="flex-wrap:wrap;gap:8px;">
+        <button class="btn btn-ghost btn-sm" id="clearDataBtn" disabled>Clear all data (keep the school &amp; its subscription)</button>
+        <button class="btn btn-danger btn-sm" id="deleteAllBtn" disabled>Delete school completely (data + record)</button>
+      </div>
+    </div>`;
+
+  // Both buttons stay disabled until the school's name is typed exactly
+  // right, on top of the password check the RPCs themselves do.
+  const dzName = document.getElementById("dangerConfirmName");
+  const dzPw = document.getElementById("dangerConfirmPw");
+  const clearBtn = document.getElementById("clearDataBtn");
+  const deleteBtn = document.getElementById("deleteAllBtn");
+  const dzUpdateState = () => {
+    const match = dzName.value.trim().toLowerCase() === (s.name || "").trim().toLowerCase();
+    clearBtn.disabled = !match; deleteBtn.disabled = !match;
+  };
+  dzName.oninput = dzUpdateState;
+  clearBtn.onclick = async () => {
+    const msg = document.getElementById("dangerMsg"); msg.innerHTML = "";
+    if (!confirm(`Permanently delete every data row for "${s.name}" (students, staff, fees, exams, attendance, comms — everything)? The school's account, plan and features stay. This cannot be undone.`)) return;
+    try {
+      await purgeSchoolData(s.id, dzPw.value);
+      msg.innerHTML = `<div class="msg-ok">All data for "${s.name}" has been permanently deleted. The school account itself is untouched.</div>`;
+      dzName.value = ""; dzPw.value = ""; dzUpdateState();
+    } catch(e) { msg.innerHTML = `<div class="err">${e.message}</div>`; }
+  };
+  deleteBtn.onclick = async () => {
+    const msg = document.getElementById("dangerMsg"); msg.innerHTML = "";
+    if (!confirm(`Permanently delete "${s.name}" AND every data row belonging to it? The school will disappear from this app completely. This cannot be undone.`)) return;
+    try {
+      await deleteSchoolCompletely(s.id, dzPw.value);
+      view = "dashboard"; render(); return;
+    } catch(e) { msg.innerHTML = `<div class="err">${e.message}</div>`; }
+  };
+}
+
+async function loadPaymentHistory(schoolId) {
+  const el = document.getElementById("paymentHistory");
+  try {
+    const payments = await listPayments(schoolId);
+    if (!payments.length) { el.innerHTML = `<div class="empty">No payments recorded yet.</div>`; return; }
+    el.innerHTML = `<table class="mini-table"><thead><tr><th>Date</th><th>Amount</th><th>Method</th><th>Note</th></tr></thead><tbody>
+      ${payments.map(p => `<tr>
+        <td>${new Date(p.created_at).toLocaleDateString()}</td>
+        <td>${p.amount}</td>
+        <td>${(p.method||'—').replace('_',' ')}</td>
+        <td>${p.note||'—'}</td>
+      </tr>`).join("")}
+    </tbody></table>`;
+  } catch(e) { el.innerHTML = `<div class="err">${e.message}</div>`; }
+}
+
+async function loadAdmins(schoolId) {
+  const listEl = document.getElementById("adminList");
+  const grantSelect = document.getElementById("grantSelect");
+  try {
+    const admins = await listAdmins(schoolId);
+    if (!admins.length) {
+      listEl.innerHTML = `<div class="empty">No administrator accounts found for this school.</div>`;
+    } else {
+      listEl.innerHTML = admins.map(a => `
+        <div class="admin-row">
+          <div>
+            <div style="font-weight:700;">${a.full_name}</div>
+            <div class="tiny-note">@${a.username}${[a.phone,a.email,a.whatsapp].filter(Boolean).length ? " · " + [a.phone,a.email].filter(Boolean).join(" · ") : ""}</div>
+          </div>
+          <div class="row" style="flex-wrap:wrap;justify-content:flex-end;">
+            <button class="btn btn-ghost btn-sm" data-reset="${a.id}">Reset password</button>
+            <button class="btn btn-danger btn-sm" data-revoke="${a.id}" ${admins.length<=1?'disabled title="Grant another admin first"':''}>Revoke</button>
+          </div>
+          <div class="inline-form" id="resetForm-${a.id}" style="display:none;width:100%;">
+            <div class="field"><label>New password (min 6 characters)</label><input type="password" id="resetPw-${a.id}" /></div>
+            <button class="btn btn-primary btn-sm" data-confirmReset="${a.id}">Set new password</button>
+          </div>
+        </div>`).join("");
+      listEl.querySelectorAll("[data-reset]").forEach(btn => {
+        btn.onclick = () => {
+          const form = document.getElementById(`resetForm-${btn.dataset.reset}`);
+          form.style.display = form.style.display === "none" ? "block" : "none";
+        };
+      });
+      listEl.querySelectorAll("[data-confirmReset]").forEach(btn => {
+        btn.onclick = async () => {
+          const id = btn.dataset.confirmReset;
+          const pw = document.getElementById(`resetPw-${id}`).value;
+          const msg = document.getElementById("adminMsg"); msg.innerHTML = "";
+          try {
+            if (!pw || pw.length < 6) throw new Error("New password must be at least 6 characters.");
+            await resetAdminPassword(schoolId, id, pw);
+            msg.innerHTML = `<div class="msg-ok">Password reset. Share it with the administrator securely.</div>`;
+            loadAdmins(schoolId);
+          } catch(e) { msg.innerHTML = `<div class="err">${e.message}</div>`; }
+        };
+      });
+      listEl.querySelectorAll("[data-revoke]").forEach(btn => {
+        btn.onclick = async () => {
+          if (btn.disabled) return;
+          if (!confirm("Revoke this account's administrator privileges?")) return;
+          const msg = document.getElementById("adminMsg"); msg.innerHTML = "";
+          try {
+            await setAdminPrivilege(schoolId, btn.dataset.revoke, false);
+            msg.innerHTML = `<div class="msg-ok">Admin privileges revoked.</div>`;
+            loadAdmins(schoolId);
+          } catch(e) { msg.innerHTML = `<div class="err">${e.message}</div>`; }
+        };
+      });
+    }
+    const staff = await listNonAdminStaff(schoolId);
+    if (!staff.length) { grantSelect.innerHTML = `<option value="">No other staff accounts</option>`; grantSelect.disabled = true; }
+    else {
+      grantSelect.disabled = false;
+      grantSelect.innerHTML = `<option value="">Select a staff member…</option>` + staff.map(p => `<option value="${p.id}">${p.full_name} (@${p.username})</option>`).join("");
+    }
+    document.getElementById("grantBtn").onclick = async () => {
+      const id = grantSelect.value;
+      const msg = document.getElementById("adminMsg"); msg.innerHTML = "";
+      if (!id) { msg.innerHTML = `<div class="err">Select a staff member first.</div>`; return; }
+      try {
+        await setAdminPrivilege(schoolId, id, true);
+        msg.innerHTML = `<div class="msg-ok">Admin privileges granted.</div>`;
+        loadAdmins(schoolId);
+      } catch(e) { msg.innerHTML = `<div class="err">${e.message}</div>`; }
+    };
+  } catch(e) {
+    listEl.innerHTML = `<div class="err">${e.message}</div>`;
+  }
+}
+
+async function renderAnalytics() {
+  app().innerHTML = `
+    <div class="wrap">
+      ${topBarHtml()}
+      ${navTabs("analytics")}
+      <div class="card" id="statsCard"><div class="tiny-note">Loading…</div></div>
+      <div class="card" id="revenueCard"><div class="tiny-note">Loading…</div></div>
+    </div>`;
+  wireTopBar();
+  wireNavTabs();
+
+  const statsCard = document.getElementById("statsCard");
+  const revenueCard = document.getElementById("revenueCard");
+  try {
+    const [schools, students, teachers, parents, activeUsers, activeWeek] = await Promise.all([
+      listSchools(),
+      countRows("students", { deleted_at:"is.null" }),
+      countRows("teachers", { deleted_at:"is.null" }),
+      countRows("profiles", { role:"eq.parent", deleted_at:"is.null" }),
+      countRows("profiles", { deleted_at:"is.null", suspended_at:"is.null" }),
+      countRows("profiles", { deleted_at:"is.null", last_login_at:`gte.${new Date(Date.now()-7*86400000).toISOString()}` }),
+    ]);
+    const byStatus = { active:0, pending:0, suspended:0, deactivated:0 };
+    schools.forEach(s => { byStatus[s.status] = (byStatus[s.status]||0) + 1; });
+    statsCard.innerHTML = `
+      <div class="section-title">Platform totals</div>
+      <div class="grid2">
+        <div><div style="font-size:22px;font-weight:800;">${schools.length}</div><div class="subtle">Registered schools</div></div>
+        <div><div style="font-size:22px;font-weight:800;">${students}</div><div class="subtle">Students</div></div>
+        <div><div style="font-size:22px;font-weight:800;">${teachers}</div><div class="subtle">Teachers</div></div>
+        <div><div style="font-size:22px;font-weight:800;">${parents}</div><div class="subtle">Parents</div></div>
+        <div><div style="font-size:22px;font-weight:800;">${activeUsers}</div><div class="subtle">Active user accounts</div></div>
+        <div><div style="font-size:22px;font-weight:800;">${activeWeek}</div><div class="subtle">Logged in, last 7 days</div></div>
+      </div>
+      <hr class="divider" />
+      <div class="row" style="flex-wrap:wrap;gap:6px;">
+        <span class="badge badge-active">${byStatus.active} active</span>
+        <span class="badge badge-pending">${byStatus.pending} pending</span>
+        <span class="badge badge-suspended">${byStatus.suspended} suspended</span>
+        <span class="badge badge-deactivated">${byStatus.deactivated} deactivated</span>
+      </div>`;
+  } catch(e) { statsCard.innerHTML = `<div class="err">${e.message}</div>`; }
+
+  try {
+    const [totalRevenue, activeSchools] = await Promise.all([
+      sumColumn("school_payments", "amount"),
+      sb(`/rest/v1/schools?${qs({status:"eq.active", select:"plan,billing_cycle,subscription_amount"})}`),
+    ]);
+    const monthlyFactor = { monthly:1, termly:1/4, yearly:1/12 };
+    const mrr = activeSchools.reduce((acc, s) => acc + (Number(s.subscription_amount)||0) * (monthlyFactor[s.billing_cycle] ?? 0), 0);
+    const byPlan = {};
+    activeSchools.forEach(s => { const p = s.plan || "No plan set"; byPlan[p] = (byPlan[p]||0) + 1; });
+    revenueCard.innerHTML = `
+      <div class="section-title">Revenue &amp; subscriptions</div>
+      <div class="grid2">
+        <div><div style="font-size:22px;font-weight:800;">${totalRevenue.toLocaleString()}</div><div class="subtle">Total revenue collected</div></div>
+        <div><div style="font-size:22px;font-weight:800;">~${Math.round(mrr).toLocaleString()}</div><div class="subtle">Estimated monthly recurring revenue</div></div>
+      </div>
+      <div class="tiny-note" style="margin-top:8px;">MRR is an estimate: termly plans ÷4, yearly plans ÷12, based on active schools' current subscription amount.</div>
+      <hr class="divider" />
+      <div style="font-weight:700;font-size:13px;margin-bottom:6px;">Active schools by plan</div>
+      <div class="row" style="flex-wrap:wrap;gap:6px;">
+        ${Object.entries(byPlan).map(([p,n]) => `<span class="badge badge-deactivated">${p}: ${n}</span>`).join("") || `<span class="subtle">No active schools yet.</span>`}
+      </div>`;
+  } catch(e) { revenueCard.innerHTML = `<div class="err">${e.message}</div>`; }
+}
+
+async function renderMonitoring() {
+  app().innerHTML = `
+    <div class="wrap">
+      ${topBarHtml()}
+      ${navTabs("monitoring")}
+      <div class="card" id="healthCard"><div class="tiny-note">Checking database…</div></div>
+      <div class="card">
+        <div class="section-title">Storage usage</div>
+        <div class="tiny-note">Storage and disk usage aren't available through this app's Supabase key — that's a Supabase project-level metric. Check it under your Supabase project → Settings → Usage.</div>
+      </div>
+      <div class="card">
+        <div class="section-title">Errors &amp; performance</div>
+        <div id="errorLog" class="tiny-note">Loading…</div>
+        <div class="tiny-note" style="margin-top:8px;">This log only fills in once the school app is wired to report errors to <code>platform_error_log</code> — see the Updates tab for the optional snippet.</div>
+      </div>
+    </div>`;
+  wireTopBar();
+  wireNavTabs();
+
+  const healthCard = document.getElementById("healthCard");
+  try {
+    const ms = await pingDatabase();
+    const [activeUsers, activeToday] = await Promise.all([
+      countRows("profiles", { deleted_at:"is.null", suspended_at:"is.null" }),
+      countRows("profiles", { deleted_at:"is.null", last_login_at:`gte.${new Date(Date.now()-86400000).toISOString()}` }),
+    ]);
+    healthCard.innerHTML = `
+      <div class="section-title">Database status</div>
+      <div class="row" style="gap:16px;flex-wrap:wrap;">
+        <span class="badge badge-active">Connected · ${ms}ms</span>
+      </div>
+      <div class="grid2" style="margin-top:12px;">
+        <div><div style="font-size:20px;font-weight:800;">${activeUsers}</div><div class="subtle">Active user accounts</div></div>
+        <div><div style="font-size:20px;font-weight:800;">${activeToday}</div><div class="subtle">Logged in today</div></div>
+      </div>`;
+  } catch(e) {
+    healthCard.innerHTML = `<div class="section-title">Database status</div><span class="badge badge-suspended">Unreachable</span><div class="err" style="margin-top:8px;">${e.message}</div>`;
+  }
+
+  const errorLogEl = document.getElementById("errorLog");
+  try {
+    const errors = await listErrorLog();
+    if (!errors.length) { errorLogEl.innerHTML = `<div class="empty">No errors reported.</div>`; }
+    else {
+      errorLogEl.innerHTML = `<table class="mini-table"><thead><tr><th>When</th><th>School</th><th>Message</th></tr></thead><tbody>
+        ${errors.map(e => `<tr><td>${new Date(e.created_at).toLocaleString()}</td><td>${e.schools?.name || '—'}</td><td>${e.message}</td></tr>`).join("")}
+      </tbody></table>`;
+    }
+  } catch(e) { errorLogEl.innerHTML = `<div class="err">${e.message}</div>`; }
+}
+
+async function renderComms() {
+  app().innerHTML = `
+    <div class="wrap">
+      ${topBarHtml()}
+      ${navTabs("comms")}
+      <div class="card">
+        <div class="section-title">Send an announcement</div>
+        <div id="announceMsg"></div>
+        <div class="field"><label>Title</label><input id="annTitle" /></div>
+        <div class="field"><label>Message</label><input id="annBody" placeholder="Shown to the school(s) you target" /></div>
+        <div class="field">
+          <label><input type="checkbox" id="annAll" checked style="width:auto;margin-right:6px;" />Send to all schools</label>
+        </div>
+        <div id="annSchoolPicker" style="display:none;" class="tiny-note">Loading schools…</div>
+        <button class="btn btn-primary btn-sm" id="sendAnnBtn">Send</button>
+      </div>
+      <div class="card">
+        <div class="section-title">Recent announcements</div>
+        <div id="announceList" class="tiny-note">Loading…</div>
+      </div>
+      <div class="card">
+        <div class="section-title">Support requests</div>
+        <div id="supportList" class="tiny-note">Loading…</div>
+      </div>
+    </div>`;
+  wireTopBar();
+  wireNavTabs();
+
+  const annAll = document.getElementById("annAll");
+  const picker = document.getElementById("annSchoolPicker");
+  let allSchools = [];
+  try { allSchools = (await listSchools()).filter(s => s.status !== "pending"); } catch(e) {}
+  function renderPicker() {
+    picker.style.display = annAll.checked ? "none" : "block";
+    if (!annAll.checked) {
+      picker.innerHTML = allSchools.map(s => `<label style="display:block;font-size:13px;margin-bottom:4px;"><input type="checkbox" class="annSchool" value="${s.id}" style="width:auto;margin-right:6px;" />${s.name}</label>`).join("") || `<div class="subtle">No schools yet.</div>`;
+    }
+  }
+  annAll.onchange = renderPicker;
+  renderPicker();
+
+  document.getElementById("sendAnnBtn").onclick = async () => {
+    const msg = document.getElementById("announceMsg"); msg.innerHTML = "";
+    const title = document.getElementById("annTitle").value.trim();
+    const body = document.getElementById("annBody").value.trim();
+    const targetAll = annAll.checked;
+    const targetSchoolIds = Array.from(document.querySelectorAll(".annSchool:checked")).map(cb => cb.value);
+    try {
+      if (!title || !body) throw new Error("Enter a title and message.");
+      if (!targetAll && !targetSchoolIds.length) throw new Error("Select at least one school, or send to all.");
+      await sendAnnouncement({ title, body, targetAll, targetSchoolIds });
+      msg.innerHTML = `<div class="msg-ok">Announcement sent.</div>`;
+      document.getElementById("annTitle").value = ""; document.getElementById("annBody").value = "";
+      loadAnnouncements();
+    } catch(e) { msg.innerHTML = `<div class="err">${e.message}</div>`; }
+  };
+  loadAnnouncements();
+  loadSupportRequests();
+}
+async function loadAnnouncements() {
+  const el = document.getElementById("announceList");
+  try {
+    const items = await listAnnouncements();
+    if (!items.length) { el.innerHTML = `<div class="empty">No announcements sent yet.</div>`; return; }
+    el.innerHTML = items.map(a => `
+      <div class="admin-row">
+        <div>
+          <div style="font-weight:700;">${a.title}</div>
+          <div class="tiny-note">${a.body}</div>
+          <div class="tiny-note">${a.target_all ? "All schools" : `${(a.target_school_ids||[]).length} school(s)`} · ${new Date(a.created_at).toLocaleDateString()}</div>
+        </div>
+        <button class="btn btn-danger btn-sm" data-del="${a.id}">Delete</button>
+      </div>`).join("");
+    el.querySelectorAll("[data-del]").forEach(btn => {
+      btn.onclick = async () => { await deleteAnnouncement(btn.dataset.del); loadAnnouncements(); };
+    });
+  } catch(e) { el.innerHTML = `<div class="err">${e.message}</div>`; }
+}
+async function loadSupportRequests() {
+  const el = document.getElementById("supportList");
+  try {
+    const items = await listSupportRequests();
+    if (!items.length) { el.innerHTML = `<div class="empty">No support requests yet.</div>`; return; }
+    el.innerHTML = items.map(r => `
+      <div class="admin-row">
+        <div>
+          <div style="font-weight:700;">${r.subject} <span class="badge ${r.status==='open'?'badge-warn':'badge-active'}">${r.status}</span></div>
+          <div class="tiny-note">${r.schools?.name || 'Unknown school'} · ${new Date(r.created_at).toLocaleDateString()}</div>
+          <div class="tiny-note">${r.message}</div>
+        </div>
+        ${r.status==='open' ? `<button class="btn btn-ghost btn-sm" data-resolve="${r.id}">Mark resolved</button>` : ""}
+      </div>`).join("");
+    el.querySelectorAll("[data-resolve]").forEach(btn => {
+      btn.onclick = async () => { await resolveSupportRequest(btn.dataset.resolve); loadSupportRequests(); };
+    });
+  } catch(e) { el.innerHTML = `<div class="err">${e.message}</div>`; }
+}
+
+async function renderUpdates() {
+  app().innerHTML = `
+    <div class="wrap">
+      ${topBarHtml()}
+      ${navTabs("updates")}
+      <div class="card">
+        <div class="section-title">Changelog</div>
+        <div class="tiny-note">Log what's new so schools (and your own team) know what's changed. Making the school app actually display these needs a small optional snippet — ask if you'd like it added.</div>
+        <div id="clMsg"></div>
+        <div class="field"><label>Title</label><input id="clTitle" placeholder="e.g. New attendance reports" /></div>
+        <div class="field"><label>Description (optional)</label><input id="clDesc" /></div>
+        <button class="btn btn-primary btn-sm" id="clAddBtn">Add entry</button>
+        <hr class="divider" />
+        <div id="clList" class="tiny-note">Loading…</div>
+      </div>
+      <div class="card">
+        <div class="section-title">Scheduled maintenance</div>
+        <div id="mwMsg"></div>
+        <div class="grid2">
+          <div class="field"><label>Starts</label><input id="mwStart" type="datetime-local" /></div>
+          <div class="field"><label>Ends</label><input id="mwEnd" type="datetime-local" /></div>
+        </div>
+        <div class="field"><label>Message for schools</label><input id="mwMessage" placeholder="e.g. Brief downtime for upgrades" /></div>
+        <button class="btn btn-primary btn-sm" id="mwAddBtn">Schedule</button>
+        <hr class="divider" />
+        <div id="mwList" class="tiny-note">Loading…</div>
+      </div>
+      <div class="card">
+        <div class="section-title">Backup checkpoints</div>
+        <div class="tiny-note">Supabase runs the actual backups for your project (check Settings → Backups in your Supabase dashboard for the schedule/plan). Use this to keep your own log of when you last verified one.</div>
+        <div id="bkMsg"></div>
+        <div class="field"><label>Note</label><input id="bkNote" placeholder="e.g. Verified restore of July snapshot" /></div>
+        <button class="btn btn-primary btn-sm" id="bkAddBtn">Log checkpoint</button>
+        <hr class="divider" />
+        <div id="bkList" class="tiny-note">Loading…</div>
+      </div>
+    </div>`;
+  wireTopBar();
+  wireNavTabs();
+
+  document.getElementById("clAddBtn").onclick = async () => {
+    const msg = document.getElementById("clMsg"); msg.innerHTML = "";
+    const title = document.getElementById("clTitle").value.trim();
+    const desc = document.getElementById("clDesc").value.trim();
+    try {
+      if (!title) throw new Error("Enter a title.");
+      await addChangelogEntry(title, desc);
+      document.getElementById("clTitle").value = ""; document.getElementById("clDesc").value = "";
+      loadChangelog();
+    } catch(e) { msg.innerHTML = `<div class="err">${e.message}</div>`; }
+  };
+  document.getElementById("mwAddBtn").onclick = async () => {
+    const msg = document.getElementById("mwMsg"); msg.innerHTML = "";
+    const start = document.getElementById("mwStart").value;
+    const end = document.getElementById("mwEnd").value;
+    const message = document.getElementById("mwMessage").value.trim();
+    try {
+      if (!start || !end) throw new Error("Set both a start and end time.");
+      await scheduleMaintenance(new Date(start).toISOString(), new Date(end).toISOString(), message);
+      document.getElementById("mwMessage").value = "";
+      loadMaintenance();
+    } catch(e) { msg.innerHTML = `<div class="err">${e.message}</div>`; }
+  };
+  document.getElementById("bkAddBtn").onclick = async () => {
+    const msg = document.getElementById("bkMsg"); msg.innerHTML = "";
+    const note = document.getElementById("bkNote").value.trim();
+    try {
+      await addBackupCheckpoint(note);
+      document.getElementById("bkNote").value = "";
+      loadBackupLog();
+    } catch(e) { msg.innerHTML = `<div class="err">${e.message}</div>`; }
+  };
+  loadChangelog(); loadMaintenance(); loadBackupLog();
+}
+async function loadChangelog() {
+  const el = document.getElementById("clList");
+  try {
+    const items = await listChangelog();
+    if (!items.length) { el.innerHTML = `<div class="empty">No entries yet.</div>`; return; }
+    el.innerHTML = items.map(c => `
+      <div class="admin-row">
+        <div><div style="font-weight:700;">${c.title}</div><div class="tiny-note">${c.description||""} · ${new Date(c.created_at).toLocaleDateString()}</div></div>
+        <button class="btn btn-danger btn-sm" data-del="${c.id}">Delete</button>
+      </div>`).join("");
+    el.querySelectorAll("[data-del]").forEach(btn => { btn.onclick = async () => { await deleteChangelogEntry(btn.dataset.del); loadChangelog(); }; });
+  } catch(e) { el.innerHTML = `<div class="err">${e.message}</div>`; }
+}
+async function loadMaintenance() {
+  const el = document.getElementById("mwList");
+  try {
+    const items = await listMaintenanceWindows();
+    if (!items.length) { el.innerHTML = `<div class="empty">Nothing scheduled.</div>`; return; }
+    el.innerHTML = items.map(w => `
+      <div class="admin-row">
+        <div>
+          <div style="font-weight:700;">${new Date(w.starts_at).toLocaleString()} → ${new Date(w.ends_at).toLocaleString()} ${w.cancelled?'<span class="badge badge-deactivated">cancelled</span>':''}</div>
+          <div class="tiny-note">${w.message||""}</div>
+        </div>
+        ${!w.cancelled ? `<button class="btn btn-ghost btn-sm" data-cancel="${w.id}">Cancel</button>` : ""}
+      </div>`).join("");
+    el.querySelectorAll("[data-cancel]").forEach(btn => { btn.onclick = async () => { await cancelMaintenance(btn.dataset.cancel); loadMaintenance(); }; });
+  } catch(e) { el.innerHTML = `<div class="err">${e.message}</div>`; }
+}
+async function loadBackupLog() {
+  const el = document.getElementById("bkList");
+  try {
+    const items = await listBackupLog();
+    if (!items.length) { el.innerHTML = `<div class="empty">No checkpoints logged yet.</div>`; return; }
+    el.innerHTML = items.map(b => `<div class="tiny-note">${new Date(b.created_at).toLocaleString()} — ${b.note||"(no note)"}</div>`).join("");
+  } catch(e) { el.innerHTML = `<div class="err">${e.message}</div>`; }
+}
+
+function isFullAccess() { return !motherAdmin || motherAdmin.role !== "read_only"; }
+function roleBadge(role) {
+  return role === "read_only" ? `<span class="badge badge-deactivated">Read-only</span>` : `<span class="badge badge-active">Full access</span>`;
+}
+
+async function renderSecurity() {
+  loginActivityShowAll = false;
+  auditLogShowAll = false;
+  app().innerHTML = `
+    <div class="wrap">
+      ${topBarHtml()}
+      ${navTabs("security")}
+      ${!isFullAccess() ? `<div class="card"><div class="tiny-note">Your account is read-only — you can view everything on this tab but can't make changes.</div></div>` : ""}
+      <div class="card">
+        <div class="section-title">Admin accounts &amp; permissions</div>
+        <div class="tiny-note" style="margin-bottom:8px;">Full-access admins can register, suspend and delete schools and change other admins. Read-only admins can view every tab but nothing they do is saved.</div>
+        <div id="secAdminMsg"></div>
+        ${isFullAccess() ? `<div class="field"><label>Your password (to confirm any change below)</label><input id="secConfirmPw" type="password" /></div>` : ""}
+        <div id="adminAccountsList" class="tiny-note">Loading…</div>
+      </div>
+      <div class="card">
+        <div class="section-title">Login activity</div>
+        <div class="tiny-note" style="margin-bottom:8px;">Recent attempts to log into this mother app. Repeated failures against one username are flagged as suspicious.</div>
+        <div id="loginActivityList" class="tiny-note">Loading…</div>
+      </div>
+      <div class="card">
+        <div class="section-title">Audit log</div>
+        <div class="tiny-note" style="margin-bottom:8px;">Every write made from this app, most recent first.</div>
+        <div id="auditLogList" class="tiny-note">Loading…</div>
+      </div>
+      <div class="card">
+        <div style="font-weight:800;margin-bottom:8px;">Database setup</div>
+        <details><summary>Upgrade: admin roles, audit log &amp; login monitoring</summary>
+          <p class="tiny-note">If this tab errors out, run this once in Supabase → SQL Editor.</p>
+          <pre>${MOTHER_SECURITY_SQL}</pre>
+        </details>
+      </div>
+    </div>`;
+  wireTopBar();
+  wireNavTabs();
+  loadAdminAccounts();
+  loadLoginActivity();
+  loadAuditLogList();
+}
+
+async function loadAdminAccounts() {
+  const el = document.getElementById("adminAccountsList");
+  try {
+    const admins = await listMotherAdmins();
+    if (!admins.length) { el.innerHTML = `<div class="empty">No admin accounts found.</div>`; return; }
+    el.innerHTML = admins.map(a => `
+      <div class="admin-row">
+        <div>
+          <div style="font-weight:700;">${a.full_name || a.username} ${a.username===motherAdmin.username ? '<span class="tiny-note">(you)</span>' : ''}</div>
+          <div class="tiny-note">@${a.username} · ${new Date(a.created_at).toLocaleDateString()}</div>
+          <div style="margin-top:4px;">${roleBadge(a.role)} ${a.active ? '' : '<span class="badge badge-suspended">Deactivated</span>'}</div>
+        </div>
+        ${isFullAccess() && a.username !== motherAdmin.username ? `
+        <div class="row" style="flex-wrap:wrap;justify-content:flex-end;">
+          <button class="btn btn-ghost btn-sm" data-role="${a.id}" data-newrole="${a.role==='read_only'?'full_access':'read_only'}">${a.role==='read_only'?'Make full access':'Make read-only'}</button>
+          <button class="btn ${a.active?'btn-danger':'btn-primary'} btn-sm" data-active="${a.id}" data-newactive="${a.active?'false':'true'}">${a.active?'Deactivate':'Reactivate'}</button>
+        </div>` : ""}
+      </div>`).join("");
+    const doChange = async (id, newRole, newActive) => {
+      const msg = document.getElementById("secAdminMsg"); msg.innerHTML = "";
+      const pw = document.getElementById("secConfirmPw").value;
+      try {
+        if (!pw) throw new Error("Enter your password to confirm.");
+        await setMotherAdminStatus(pw, id, newRole, newActive);
+        document.getElementById("secConfirmPw").value = "";
+        msg.innerHTML = `<div class="msg-ok">Updated.</div>`;
+        loadAdminAccounts();
+      } catch(e) { msg.innerHTML = `<div class="err">${e.message}</div>`; }
+    };
+    el.querySelectorAll("[data-role]").forEach(btn => {
+      btn.onclick = () => doChange(btn.dataset.role, btn.dataset.newrole, undefined);
+    });
+    el.querySelectorAll("[data-active]").forEach(btn => {
+      btn.onclick = () => {
+        const activating = btn.dataset.newactive === "true";
+        if (!activating && !confirm("Deactivate this admin? They won't be able to log in until reactivated.")) return;
+        doChange(btn.dataset.active, undefined, activating);
+      };
+    });
+  } catch(e) { el.innerHTML = `<div class="err">${e.message}</div>`; }
+}
+
+async function loadLoginActivity() {
+  const el = document.getElementById("loginActivityList");
+  try {
+    loginActivityItems = await listLoginLog(500);
+    renderLoginActivityList();
+  } catch(e) { el.innerHTML = `<div class="err">${e.message}</div>`; }
+}
+function renderLoginActivityList() {
+  const el = document.getElementById("loginActivityList");
+  if (!loginActivityItems.length) { el.innerHTML = `<div class="empty">No login activity yet.</div>`; return; }
+  // Flag a username as suspicious if it has 3+ failed attempts within the last 15 minutes.
+  const now = Date.now();
+  const recentFailuresByUser = {};
+  loginActivityItems.forEach(r => {
+    if (!r.success && (now - new Date(r.created_at).getTime()) < 15*60000) {
+      recentFailuresByUser[r.username] = (recentFailuresByUser[r.username]||0) + 1;
+    }
+  });
+  const shown = loginActivityShowAll ? loginActivityItems : loginActivityItems.slice(0, LOG_PAGE_SIZE);
+  el.innerHTML = `
+    <div class="table-scroll"><table class="mini-table"><thead><tr><th>When</th><th>Username</th><th>Result</th></tr></thead><tbody>
+      ${shown.map(r => `<tr>
+        <td>${new Date(r.created_at).toLocaleString()}</td>
+        <td>${r.username}${recentFailuresByUser[r.username] >= 3 ? ' <span class="badge badge-suspended">Suspicious</span>' : ''}</td>
+        <td>${r.success ? '<span class="badge badge-active">Success</span>' : '<span class="badge badge-suspended">Failed</span>'}</td>
+      </tr>`).join("")}
+    </tbody></table></div>
+    <div class="table-foot">
+      <span>${loginActivityItems.length > LOG_PAGE_SIZE ? `<span class="link-btn" id="loginActivityToggle">${loginActivityShowAll ? "Show latest 10" : `Show all (${loginActivityItems.length})`}</span>` : ""}</span>
+      ${isFullAccess() ? `<button class="btn btn-danger btn-sm" id="clearLoginActivityBtn">Clear login activity</button>` : ""}
+    </div>
+    <div id="loginActivityMsg"></div>`;
+  const toggle = document.getElementById("loginActivityToggle");
+  if (toggle) toggle.onclick = () => { loginActivityShowAll = !loginActivityShowAll; renderLoginActivityList(); };
+  const clearBtn = document.getElementById("clearLoginActivityBtn");
+  if (clearBtn) clearBtn.onclick = async () => {
+    if (!confirm("Clear all login activity? This can't be undone.")) return;
+    const msg = document.getElementById("loginActivityMsg");
+    try {
+      await clearLoginLog();
+      loginActivityShowAll = false;
+      await loadLoginActivity();
+    } catch(e) { msg.innerHTML = `<div class="err">${e.message}</div>`; }
+  };
+}
+
+async function loadAuditLogList() {
+  const el = document.getElementById("auditLogList");
+  try {
+    auditLogItems = await listAuditLog(500);
+    renderAuditLogList();
+  } catch(e) { el.innerHTML = `<div class="err">${e.message}</div>`; }
+}
+function renderAuditLogList() {
+  const el = document.getElementById("auditLogList");
+  if (!auditLogItems.length) { el.innerHTML = `<div class="empty">No audit entries yet.</div>`; return; }
+  const shown = auditLogShowAll ? auditLogItems : auditLogItems.slice(0, LOG_PAGE_SIZE);
+  el.innerHTML = `
+    <div class="table-scroll"><table class="mini-table"><thead><tr><th>When</th><th>Admin</th><th>Action</th><th>Details</th></tr></thead><tbody>
+      ${shown.map(r => `<tr>
+        <td>${new Date(r.created_at).toLocaleString()}</td>
+        <td>${r.actor_username || '—'}</td>
+        <td>${r.action}${r.target_type ? ` (${r.target_type})` : ''}</td>
+        <td>${r.details || ''}</td>
+      </tr>`).join("")}
+    </tbody></table></div>
+    <div class="table-foot">
+      <span>${auditLogItems.length > LOG_PAGE_SIZE ? `<span class="link-btn" id="auditLogToggle">${auditLogShowAll ? "Show latest 10" : `Show all (${auditLogItems.length})`}</span>` : ""}</span>
+      ${isFullAccess() ? `<button class="btn btn-danger btn-sm" id="clearAuditLogBtn">Clear audit log</button>` : ""}
+    </div>
+    <div id="auditLogMsg"></div>`;
+  const toggle = document.getElementById("auditLogToggle");
+  if (toggle) toggle.onclick = () => { auditLogShowAll = !auditLogShowAll; renderAuditLogList(); };
+  const clearBtn = document.getElementById("clearAuditLogBtn");
+  if (clearBtn) clearBtn.onclick = async () => {
+    if (!confirm("Clear the entire audit log? This can't be undone.")) return;
+    const msg = document.getElementById("auditLogMsg");
+    try {
+      await clearAuditLog();
+      auditLogShowAll = false;
+      await loadAuditLogList();
+    } catch(e) { msg.innerHTML = `<div class="err">${e.message}</div>`; }
+  };
+}
+
+function render() {
+  if (!motherAdmin) { renderLogin(); return; }
+  if (view === "settings") renderSettings();
+  else if (view === "schoolDetail") renderSchoolDetail();
+  else if (view === "analytics") renderAnalytics();
+  else if (view === "monitoring") renderMonitoring();
+  else if (view === "comms") renderComms();
+  else if (view === "updates") renderUpdates();
+  else if (view === "security") renderSecurity();
+  else renderDashboard();
+}
+/* ---------------- Keyboard-aware form scrolling ----------------
+   Every screen in this app is re-rendered via innerHTML, so fields are
+   created/destroyed constantly — a single delegated listener on document
+   covers all of them, present and future, instead of wiring each form. */
+document.addEventListener("focusin", (e) => {
+  const t = e.target;
+  if (t.matches && t.matches("input, select, textarea")) {
+    setTimeout(() => {
+      t.scrollIntoView({ block: "center", behavior: "smooth" });
+    }, 300); // gives the mobile keyboard time to finish animating in
+  }
+});
+
+(async () => {
+  await tryRestoreMotherSession();
+  render();
+})();
+</script>
+</body>
+</html>
