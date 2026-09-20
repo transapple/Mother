@@ -244,6 +244,12 @@ const LOGO_URI = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAQAAAAEACAYAAABc
 
 // ---------- Installable PWA: service worker + install prompt ----------
 
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./sw.js").catch((err) => console.warn("SW registration failed:", err));
+  });
+}
+
 let __pwaDeferredPrompt = null;
 const __pwaBtn = () => document.getElementById("pwaInstallBtn");
 const __pwaInstalled = () => window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
