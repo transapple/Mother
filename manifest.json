@@ -1,7 +1,7 @@
 {
-  "name": "TransApple Technologies",
+  "name": "TransApple",
   "short_name": "TransApple",
-  "description": "TransApple Technologies application",
+  "description": "TransApple application",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
@@ -9,7 +9,7 @@
   "theme_color": "#3457D5",
   "icons": [
     {
-      "src": "data:image/png;base64,PASTE_YOUR_EXISTING_EMBEDDED_LOGO_BASE64_HERE",
+      "src": "data:image/png;base64,PASTE_THE_EXISTING_LOGO_DATA_HERE",
       "sizes": "256x256",
       "type": "image/png",
       "purpose": "any"
