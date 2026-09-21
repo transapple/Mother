@@ -4,7 +4,33 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>TransApple</title>
+<meta name="description" content="TransApple">
 <meta name="theme-color" content="#3457D5">
+<script>
+/* Install gate: runs before first paint. Adds pg-on only when NOT already running as an installed app. */
+(function(){try{var d=document.documentElement,m=window.matchMedia,c=false,
+s=!!(m&&(m("(display-mode: standalone)").matches||m("(display-mode: fullscreen)").matches||m("(display-mode: minimal-ui)").matches))||navigator.standalone===true;
+try{c=!!sessionStorage.getItem("pgContinue")}catch(e){}
+if(!s&&!c)d.classList.add("pg-on")}catch(e){}})();
+</script>
+<style>
+/* Install gate (shown only while html.pg-on is set) */
+#pgGate{display:none}
+html.pg-on{overflow:hidden}
+html.pg-on body>:not(#pgGate){visibility:hidden}
+html.pg-on #pgGate{display:flex;visibility:visible;position:fixed;inset:0;z-index:2147483000;flex-direction:column;align-items:center;justify-content:center;
+  padding:32px 24px calc(32px + env(safe-area-inset-bottom));background:#F0F1F6;color:#1A1D27;text-align:center;overflow:auto;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+#pgGate .pg-logo{width:112px;height:112px;border-radius:26px;object-fit:cover;display:block;box-shadow:0 10px 30px rgba(20,23,35,.28)}
+#pgGate .pg-name{margin:22px 0 32px;font-size:1.75rem;font-weight:800;line-height:1.2;letter-spacing:-.02em;color:inherit}
+#pgGate .pg-install{display:inline-flex;align-items:center;justify-content:center;gap:10px;width:min(100%,320px);min-height:52px;padding:0 24px;border:0;border-radius:14px;
+  background:#3457D5;color:#fff;font-family:inherit;font-size:1rem;font-weight:700;line-height:1;cursor:pointer;box-shadow:0 8px 22px rgba(52,87,213,.35)}
+#pgGate .pg-install:disabled{opacity:.7;cursor:default}
+#pgGate .pg-msg{margin:16px 0 0;max-width:320px;font-size:.9rem;line-height:1.5;color:#666C7D}
+#pgGate .pg-msg[hidden]{display:none}
+#pgGate .pg-continue{margin-top:14px;padding:12px 16px;border:0;background:none;font-family:inherit;font-size:.92rem;font-weight:600;line-height:1.2;color:#3457D5;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+#pgGate button:focus-visible{outline:2px solid #3457D5;outline-offset:3px}
+</style>
 <link rel="manifest" href="manifest.json">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -231,6 +257,141 @@
 </style>
 </head>
 <body>
+<div id="pgGate" role="dialog" aria-modal="true" aria-labelledby="pgName">
+  <img id="pgLogo" class="pg-logo" src="icon-512.png" alt="" width="112" height="112">
+  <h1 id="pgName" class="pg-name">TransApple</h1>
+  <button type="button" id="pgInstall" class="pg-install">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+    <span id="pgInstallLabel">Install</span>
+  </button>
+  <p id="pgMsg" class="pg-msg" role="status" aria-live="polite" hidden></p>
+  <button type="button" id="pgContinue" class="pg-continue">Continue in browser</button>
+</div>
+<script>
+(function () {
+  "use strict";
+  var root = document.documentElement;
+  var deferred = null;      // the stored beforeinstallprompt event
+  var waiter = null;        // resolves the "wait for the event" delay
+  var busy = false, installedNow = false;
+  var ua = navigator.userAgent || "";
+  var isIOS = /iphone|ipad|ipod/i.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  function $(id) { return document.getElementById(id); }
+
+  function standalone() {
+    try {
+      var m = window.matchMedia;
+      return !!(m && (m("(display-mode: standalone)").matches || m("(display-mode: fullscreen)").matches || m("(display-mode: minimal-ui)").matches)) || navigator.standalone === true;
+    } catch (e) { return false; }
+  }
+  function gateOn() { return root.classList.contains("pg-on"); }
+
+  // Messages: inline in the gate while it is showing, otherwise a toast (floating button).
+  function toast(msg) {
+    var t = $("pwaToast");
+    if (!t) {
+      t = document.createElement("div");
+      t.id = "pwaToast";
+      t.style.cssText = "position:fixed;left:50%;bottom:84px;transform:translateX(-50%);max-width:88vw;background:#161A26;color:#fff;padding:12px 16px;border-radius:12px;font:600 13.5px/1.4 system-ui,sans-serif;z-index:1000;box-shadow:0 8px 24px rgba(0,0,0,.3);text-align:center;";
+      document.body.appendChild(t);
+    }
+    t.textContent = msg;
+    t.style.display = "block";
+    clearTimeout(t._h);
+    t._h = setTimeout(function () { t.style.display = "none"; }, 8000);
+  }
+  function say(msg) {
+    if (gateOn()) { var m = $("pgMsg"); m.textContent = msg; m.hidden = false; }
+    else toast(msg);
+  }
+
+  // Floating install button (kept from the app): visible only outside the gate, when an install is possible.
+  function syncFloat() {
+    var b = $("pwaInstallBtn");
+    if (!b) return;
+    var can = !!deferred || isIOS;
+    b.style.display = (can && !installedNow && !standalone() && !gateOn()) ? "flex" : "none";
+  }
+  function setBusy(on) {
+    var b = $("pgInstall"), l = $("pgInstallLabel");
+    if (b) b.disabled = on;
+    if (l) l.textContent = on ? "Getting ready\u2026" : "Install";
+  }
+
+  function runPrompt() {
+    var p = deferred;
+    deferred = null;                       // a prompt can only be used once
+    var done;
+    try {
+      p.prompt();
+      done = Promise.resolve(p.userChoice).then(function (c) {
+        if (c && c.outcome === "accepted") say("Installing\u2026 the app will appear on your home screen or app list in a few seconds.");
+        else say("Install cancelled. To try again, open the browser menu and tap \u201cInstall app\u201d.");
+      });
+    } catch (err) {
+      done = Promise.reject(err);
+    }
+    return done.catch(function () {
+      say("Couldn\u2019t start the install. Open the browser menu and tap \u201cInstall app\u201d or \u201cAdd to Home screen\u201d.");
+    }).then(syncFloat);
+  }
+
+  function waitForPrompt(ms) {
+    return new Promise(function (resolve) {
+      var t = setTimeout(function () { waiter = null; resolve(); }, ms);
+      waiter = function () { clearTimeout(t); waiter = null; resolve(); };
+    });
+  }
+
+  function install() {
+    if (standalone()) return;
+    if (deferred) { runPrompt(); return; }
+    if (isIOS) { say("To install: tap the Share icon, then \u201cAdd to Home Screen\u201d."); return; }
+    if (busy) return;
+    busy = true; setBusy(true);
+    // The browser may not have fired beforeinstallprompt yet: wait up to 3.5 s before falling back.
+    waitForPrompt(3500).then(function () {
+      busy = false; setBusy(false);
+      if (deferred) runPrompt();
+      else say("Open the browser menu (\u22ee) and tap \u201cInstall app\u201d or \u201cAdd to Home screen\u201d.");
+    });
+  }
+
+  window.addEventListener("beforeinstallprompt", function (e) {
+    e.preventDefault();
+    deferred = e;
+    if (waiter) waiter();
+    syncFloat();
+  });
+  window.addEventListener("appinstalled", function () {
+    installedNow = true;
+    deferred = null;
+    var b = $("pgInstall"); if (b) b.style.display = "none";
+    syncFloat();
+    say("Installed! Open TransApple from your home screen or app list.");
+  });
+
+  $("pgInstall").addEventListener("click", install);
+  $("pgContinue").addEventListener("click", function () {
+    try { sessionStorage.setItem("pgContinue", "1"); } catch (e) {}
+    root.classList.remove("pg-on");
+    var m = $("pgMsg"); if (m) m.hidden = true;
+    syncFloat();
+  });
+  // The floating button lives further down the page; a delegated listener needs no ordering.
+  document.addEventListener("click", function (e) {
+    var t = e.target;
+    if (t && t.closest && t.closest("#pwaInstallBtn")) install();
+  });
+  document.addEventListener("DOMContentLoaded", syncFloat);
+
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", function () {
+      navigator.serviceWorker.register("sw.js", { scope: "./", updateViaCache: "none" }).catch(function () {});
+    });
+  }
+})();
+</script>
 <div id="app"></div>
 <div id="fabRoot"></div>
 <button id="pwaInstallBtn" title="Install App" style="display:none;position:fixed;right:18px;bottom:18px;z-index:999;width:52px;height:52px;border-radius:50%;background:#3457D5;color:#fff;border:none;box-shadow:0 6px 18px rgba(52,87,213,.35);align-items:center;justify-content:center;cursor:pointer;">
@@ -253,69 +414,6 @@ const LOGO_URI = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAQAAAAEACAYAAABc
   document.head.appendChild(touch);
 })();
 
-// ---------- Installable PWA: service worker + install prompt ----------
-
-if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./sw.js").catch((err) => console.warn("SW registration failed:", err));
-  });
-}
-
-let __pwaDeferredPrompt = null;
-const __pwaBtn = () => document.getElementById("pwaInstallBtn");
-const __pwaInstalled = () => window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
-function __pwaToast(msg) {
-  let t = document.getElementById("pwaToast");
-  if (!t) {
-    t = document.createElement("div");
-    t.id = "pwaToast";
-    t.style.cssText = "position:fixed;left:50%;bottom:84px;transform:translateX(-50%);max-width:88vw;background:#161A26;color:#fff;padding:12px 16px;border-radius:12px;font:600 13.5px/1.4 system-ui,sans-serif;z-index:1000;box-shadow:0 8px 24px rgba(0,0,0,.3);text-align:center;";
-    document.body.appendChild(t);
-  }
-  t.textContent = msg;
-  t.style.display = "block";
-  clearTimeout(t._h);
-  t._h = setTimeout(() => { t.style.display = "none"; }, 8000);
-}
-window.addEventListener("beforeinstallprompt", (e) => {
-  e.preventDefault();
-  __pwaDeferredPrompt = e;
-  const btn = __pwaBtn();
-  if (btn && !__pwaInstalled()) btn.style.display = "flex";
-});
-document.getElementById("pwaInstallBtn").addEventListener("click", async () => {
-  const btn = __pwaBtn();
-  if (__pwaDeferredPrompt) {
-    const p = __pwaDeferredPrompt;
-    __pwaDeferredPrompt = null; // a prompt can only be used once
-    try {
-      p.prompt();
-      const choice = await p.userChoice;
-      if (choice && choice.outcome === "accepted") {
-        btn.style.display = "none";
-        __pwaToast("Installing… the app will appear on your home screen in a few seconds.");
-      } else {
-        __pwaToast("Install cancelled. To try again, open the browser menu and tap \u201cInstall app\u201d.");
-      }
-    } catch (err) {
-      __pwaToast("Couldn\u2019t start the install. Open the browser menu and tap \u201cInstall app\u201d or \u201cAdd to Home screen\u201d.");
-    }
-  } else if (/iphone|ipad|ipod/i.test(navigator.userAgent)) {
-    alert("To install: tap the Share icon, then \"Add to Home Screen\".");
-  } else {
-    __pwaToast("Open the browser menu (\u22ee) and tap \u201cInstall app\u201d or \u201cAdd to Home screen\u201d.");
-  }
-});
-window.addEventListener("appinstalled", () => {
-  const btn = __pwaBtn();
-  if (btn) btn.style.display = "none";
-  __pwaDeferredPrompt = null;
-  __pwaToast("Installed! Find the app on your home screen.");
-});
-if (/iphone|ipad|ipod/i.test(navigator.userAgent) && !__pwaInstalled()) {
-  const btn = __pwaBtn();
-  if (btn) btn.style.display = "flex";
-}
 const SUPABASE_KEY = "sb_publishable_Y48beigB72EVErcQKDwrDA_sTxiHI6u";
 
 async function sb(path, opts = {}) {
