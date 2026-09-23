@@ -56,6 +56,9 @@ html.pg-on #pgGate{display:flex;visibility:visible;position:fixed;inset:0;z-inde
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
   html,body{overflow-x:hidden;width:100%;max-width:100%;}
   body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased;}
+  /* No text-selection caret anywhere except real input fields */
+  *{-webkit-user-select:none;-moz-user-select:none;user-select:none;cursor:default;}
+  input,textarea,select,[contenteditable="true"]{-webkit-user-select:text;-moz-user-select:text;user-select:text;cursor:text;}
   .wrap{max-width:720px;margin:0 auto;padding:16px 14px calc(78px + env(safe-area-inset-bottom,0px));overflow-x:hidden;}
   img{max-width:100%;}
 
@@ -416,6 +419,45 @@ const LOGO_URI = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAQAAAAEACAYAAABc
 
 const SUPABASE_KEY = "sb_publishable_Y48beigB72EVErcQKDwrDA_sTxiHI6u";
 
+// --- PrimaryVault (separate Supabase project: "Excel Examination Services") ---
+const PV_SB_URL = "https://vylcldfjzmqusdszhode.supabase.co";
+const PV_FUNCTIONS_URL = PV_SB_URL + "/functions/v1";
+const PV_ADMIN_KEY = "pv-mother-2026";
+// NOTE: request/response shape below (action field, markRead/reply payload) is
+// based on the admin-data function's documented behavior; verify field names
+// against the actual Edge Function if calls fail.
+async function pvFetchSnapshot() {
+  let res;
+  try {
+    res = await fetch(`${PV_FUNCTIONS_URL}/admin-data`, {
+      method: "GET",
+      headers: { "x-admin-key": PV_ADMIN_KEY }
+    });
+  } catch (e) { throw new Error("Could not reach the PrimaryVault server."); }
+  if (!res.ok) {
+    let msg = `PrimaryVault server error (${res.status})`;
+    try { const j = await res.json(); if (j && j.error) msg = j.error; } catch(e) {}
+    throw new Error(msg);
+  }
+  return res.json();
+}
+async function pvMessageAction(action, messageId, replyText) {
+  let res;
+  try {
+    res = await fetch(`${PV_FUNCTIONS_URL}/admin-data`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-admin-key": PV_ADMIN_KEY },
+      body: JSON.stringify({ action, messageId, reply: replyText })
+    });
+  } catch (e) { throw new Error("Could not reach the PrimaryVault server."); }
+  if (!res.ok) {
+    let msg = `PrimaryVault server error (${res.status})`;
+    try { const j = await res.json(); if (j && j.error) msg = j.error; } catch(e) {}
+    throw new Error(msg);
+  }
+  return res.json();
+}
+
 async function sb(path, opts = {}) {
   const headers = Object.assign({
     "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY, "Content-Type": "application/json",
@@ -631,12 +673,19 @@ async function listTrashedSchools() {
     p_username: motherAdmin.username, p_token: motherAdmin.session_token,
   }) });
 }
-async function createSchool({ name, motto, village, subCounty, district, size }) {
+const VALID_SCHOOL_LEVEL_COMBOS = [
+  ["pre_primary","primary"], ["primary"], ["secondary"], ["primary","secondary"], ["pre_primary","primary","secondary"],
+];
+function isValidSchoolLevelCombo(levels) {
+  return VALID_SCHOOL_LEVEL_COMBOS.some(c => c.length === levels.length && c.every((v,i) => v === levels[i]));
+}
+async function createSchool({ name, motto, village, subCounty, district, size, levels }) {
   assertFullAccess();
   const row = await sb(`/rest/v1/rpc/create_school`, { method:"POST", body: JSON.stringify({
     p_name: name, p_motto: motto || null, p_village: village || null, p_sub_county: subCounty || null,
     p_district: district || null, p_size: size || null,
     p_username: motherAdmin.username, p_token: motherAdmin.session_token,
+    p_school_levels: levels,
   }) });
   return row;
 }
@@ -932,18 +981,6 @@ async function renderDashboard() {
         <div class="section-title">Schools</div>
         <div id="schoolList">Loading…</div>
       </div>
-      <div class="card">
-        <div class="menu-row" data-go="suspended">
-          <span class="menu-row-icon">${ICONS.suspended}</span>
-          <div class="menu-row-label">Suspended<div class="tiny-note" style="margin-top:1px;" id="suspendedCountNote">Loading…</div></div>
-          <span class="menu-row-chevron">›</span>
-        </div>
-        <div class="menu-row" data-go="trash">
-          <span class="menu-row-icon">${ICONS.trash}</span>
-          <div class="menu-row-label">Trash<div class="tiny-note" style="margin-top:1px;" id="trashCountNote">Loading…</div></div>
-          <span class="menu-row-chevron">›</span>
-        </div>
-      </div>
     </div>`;
   wireTopBar();
   wireNavTabs();
@@ -975,6 +1012,14 @@ function registerSchoolFabHtml() {
         <div class="grid2">
           <div class="field"><label>District</label><input id="newSchoolDistrict" /></div>
           <div class="field"><label>Size (students)</label><input id="newSchoolSize" type="number" min="1" /></div>
+        </div>
+        <div class="field">
+          <label>School level(s)</label>
+          <div style="display:flex;flex-wrap:wrap;gap:14px;padding:4px 2px;">
+            <label style="display:flex;align-items:center;gap:6px;font-weight:400;"><input type="checkbox" class="newSchoolLevel" value="pre_primary" style="width:auto;" />Pre-Primary / Nursery</label>
+            <label style="display:flex;align-items:center;gap:6px;font-weight:400;"><input type="checkbox" class="newSchoolLevel" value="primary" style="width:auto;" />Primary</label>
+            <label style="display:flex;align-items:center;gap:6px;font-weight:400;"><input type="checkbox" class="newSchoolLevel" value="secondary" style="width:auto;" />Secondary</label>
+          </div>
         </div>
         <button class="btn btn-primary" id="createSchoolBtn" style="width:100%;">Register school</button>
         
@@ -1018,14 +1063,17 @@ function wireRegisterSchoolFab() {
     const subCounty = document.getElementById("newSchoolSubcounty").value.trim();
     const district = document.getElementById("newSchoolDistrict").value.trim();
     const size = document.getElementById("newSchoolSize").value.trim();
+    const levels = Array.from(document.querySelectorAll(".newSchoolLevel:checked")).map(cb => cb.value);
     const msg = document.getElementById("createMsg"); msg.innerHTML = "";
     if (!name) { msg.innerHTML = `<div class="err">Enter a school name.</div>`; return; }
+    if (!isValidSchoolLevelCombo(levels)) { msg.innerHTML = `<div class="err">Select the school's level(s): Primary, Secondary, or Primary + Secondary (Pre-Primary/Nursery must be paired with Primary).</div>`; return; }
     createBtn.disabled = true;
     const originalLabel = createBtn.textContent;
     createBtn.textContent = "Registering…";
     try {
-      const school = await createSchool({ name, motto, village, subCounty, district, size: size ? Number(size) : null });
+      const school = await createSchool({ name, motto, village, subCounty, district, size: size ? Number(size) : null, levels });
       ["newSchoolName","newSchoolMotto","newSchoolVillage","newSchoolSubcounty","newSchoolDistrict","newSchoolSize"].forEach(id => { document.getElementById(id).value = ""; });
+      document.querySelectorAll(".newSchoolLevel:checked").forEach(cb => { cb.checked = false; });
       msg.innerHTML = `<div class="msg-ok">School registered and active. Give them this School ID so their first staff member can create the admin account: <strong class="mono">${school.school_code}</strong></div>`;
       if (view === "dashboard") loadSchools();
     } catch(e) { msg.innerHTML = `<div class="err">${e.message}</div>`; }
@@ -2436,8 +2484,9 @@ async function renderWebManager() {
     </div>`;
   wireTopBar();
   wireNavTabs();
-  wireSubTabs("webtab", (id) => { webSubTab = id; renderWebManager(); });
+  wireSubTabs("webtab", (id) => { clearPvPoll(); webSubTab = id; renderWebManager(); });
   if (webSubTab === "students") renderDigitalStudents();
+  else if (webSubTab === "primaryvault") renderPrimaryVault();
   else renderWebsiteVisitors();
 }
 async function renderWebsiteVisitors() {
@@ -2483,14 +2532,143 @@ async function loadWebManager() {
   } catch(e) { listEl.innerHTML = `<div class="err">${e.message}</div>`; }
 }
 
-let webSubTab = "website"; // "website" | "students"
+async function renderPrimaryVault() {
+  const pane = document.getElementById("webPane");
+  if (!pane) return;
+  pane.innerHTML = `
+      <div class="card">
+        <div class="section-title">PrimaryVault — activity</div>
+        <div class="grid2">
+          <div class="stat-card"><div class="stat-value" id="pvTotalVisitors">—</div><div class="stat-label">Visitors</div></div>
+          <div class="stat-card"><div class="stat-value" id="pvTotalTime">—</div><div class="stat-label">Total time on platform</div></div>
+        </div>
+        <div class="grid2" style="margin-top:10px;">
+          <div class="stat-card"><div class="stat-value" id="pvPdfOpens">—</div><div class="stat-label">PDF opens</div></div>
+          <div class="stat-card"><div class="stat-value" id="pvImageOpens">—</div><div class="stat-label">Image opens</div></div>
+        </div>
+        <div class="section-title" style="margin-top:14px;">Top subjects</div>
+        <div id="pvSubjectList" class="tiny-note">Loading…</div>
+      </div>
+      <div class="card">
+        <div class="section-title">Messages<span class="count-chip" id="pvMsgCount">0</span></div>
+        ${subTabsHtml(PV_MSG_FILTERS, pvMsgFilter, "pvmsgfilter")}
+        <div id="pvMsgList" class="tiny-note">Loading…</div>
+      </div>`;
+  wireSubTabs("pvmsgfilter", (id) => { pvMsgFilter = id; renderPvMessageList(); });
+  await loadPrimaryVault();
+  startPvPoll();
+}
+async function loadPrimaryVault(silent) {
+  if (pvLoading) return;
+  pvLoading = true;
+  try {
+    pvSnapshot = await pvFetchSnapshot();
+    renderPvActivity();
+    renderPvMessageList();
+  } catch (e) {
+    if (!silent) {
+      const subjEl = document.getElementById("pvSubjectList");
+      if (subjEl) subjEl.innerHTML = `<div class="err">${escapeHtml(e.message)}</div>`;
+      const msgEl = document.getElementById("pvMsgList");
+      if (msgEl) msgEl.innerHTML = `<div class="err">${escapeHtml(e.message)}</div>`;
+    }
+  } finally {
+    pvLoading = false;
+  }
+}
+function renderPvActivity() {
+  if (!pvSnapshot) return;
+  const visitors = pvSnapshot.visitors || [];
+  const events = pvSnapshot.events || [];
+  const totalSeconds = visitors.reduce((sum, v) => sum + (v.total_time_seconds || v.total_time || 0), 0);
+  const pdfOpens = events.filter(e => e.event_type === "content_open" && e.content_type === "pdf").length;
+  const imageOpens = events.filter(e => e.event_type === "content_open" && e.content_type === "image").length;
+  const totalVisitorsEl = document.getElementById("pvTotalVisitors");
+  const totalTimeEl = document.getElementById("pvTotalTime");
+  const pdfEl = document.getElementById("pvPdfOpens");
+  const imgEl = document.getElementById("pvImageOpens");
+  if (totalVisitorsEl) totalVisitorsEl.textContent = visitors.length;
+  if (totalTimeEl) totalTimeEl.textContent = formatDuration(totalSeconds);
+  if (pdfEl) pdfEl.textContent = pdfOpens;
+  if (imgEl) imgEl.textContent = imageOpens;
+  const subjectCounts = {};
+  events.filter(e => e.event_type === "subject_view" && e.subject).forEach(e => {
+    subjectCounts[e.subject] = (subjectCounts[e.subject] || 0) + 1;
+  });
+  const subjEl = document.getElementById("pvSubjectList");
+  if (!subjEl) return;
+  const rows = Object.entries(subjectCounts).sort((a, b) => b[1] - a[1]).slice(0, 8);
+  if (!rows.length) { subjEl.innerHTML = `<div class="empty">No subject views yet.</div>`; return; }
+  subjEl.innerHTML = `<div class="table-scroll"><table class="mini-table"><thead><tr><th>Subject</th><th>Views</th></tr></thead><tbody>
+      ${rows.map(([subj, count]) => `<tr><td>${escapeHtml(subj)}</td><td>${count}</td></tr>`).join("")}
+    </tbody></table></div>`;
+}
+function renderPvMessageList() {
+  const el = document.getElementById("pvMsgList");
+  const countEl = document.getElementById("pvMsgCount");
+  if (!el || !pvSnapshot) return;
+  const all = pvSnapshot.messages || [];
+  if (countEl) countEl.textContent = all.filter(m => m.status === "new").length;
+  const filtered = pvMsgFilter === "all" ? all : all.filter(m => m.status === pvMsgFilter);
+  if (!filtered.length) { el.innerHTML = `<div class="empty">No ${pvMsgFilter === "all" ? "" : pvMsgFilter + " "}messages.</div>`; return; }
+  el.innerHTML = filtered.map(m => `
+      <div class="card" style="margin-top:8px;">
+        <div style="font-weight:700;">${escapeHtml(m.name || "Anonymous")}</div>
+        <div class="tiny-note">${timeAgo(m.created_at)} · status: ${escapeHtml(m.status || "")}</div>
+        <p>${escapeHtml(m.message || "")}</p>
+        ${m.reply
+          ? `<div class="tiny-note"><b>Reply sent:</b> ${escapeHtml(m.reply)}</div>`
+          : `<div class="field"><label>Reply</label><input type="text" data-pvmsg="${m.id}" placeholder="Type a reply…"></div>
+             <div style="display:flex;gap:8px;flex-wrap:wrap;">
+               <button class="btn btn-primary btn-sm" data-pvreply="${m.id}">Send reply</button>
+               ${m.status === "new" ? `<button class="btn btn-ghost btn-sm" data-pvread="${m.id}">Mark read</button>` : ""}
+             </div>`}
+      </div>`).join("");
+  el.querySelectorAll("[data-pvreply]").forEach(btn => {
+    btn.onclick = async () => {
+      const id = btn.dataset.pvreply;
+      const input = el.querySelector(`input[data-pvmsg="${id}"]`);
+      const text = (input?.value || "").trim();
+      if (!text) return;
+      btn.disabled = true;
+      try {
+        await pvMessageAction("reply", id, text);
+        await loadPrimaryVault();
+      } catch (e) { alert(e.message); btn.disabled = false; }
+    };
+  });
+  el.querySelectorAll("[data-pvread]").forEach(btn => {
+    btn.onclick = async () => {
+      const id = btn.dataset.pvread;
+      btn.disabled = true;
+      try {
+        await pvMessageAction("markRead", id);
+        await loadPrimaryVault();
+      } catch (e) { alert(e.message); btn.disabled = false; }
+    };
+  });
+}
+function startPvPoll() {
+  clearPvPoll();
+  pvPollTimer = setInterval(() => { loadPrimaryVault(true); }, 8000);
+}
+function clearPvPoll() {
+  if (pvPollTimer) { clearInterval(pvPollTimer); pvPollTimer = null; }
+}
+
+let webSubTab = "website"; // "website" | "students" | "primaryvault"
 let dsSection = "registry"; // "registry" | "reviews" | "corrections"
 let dsQuery = "";
 let dsReviewFilter = "pending";
 let dsCorrFilter = "pending";
 let dsListSeq = 0;
 let dsSchoolsCache = null;
-const WEB_TABS = [["website","Website","globe"],["students","Digital Students","admins"]];
+const WEB_TABS = [["website","Website","globe"],["students","Digital Students","admins"],["primaryvault","PrimaryVault","database"]];
+let pvPollTimer = null;
+let pvSnapshot = null;
+let pvLoading = false;
+let pvMsgFilter = "new"; // "new" | "read" | "replied" | "all"
+const PV_MSG_FILTERS = [["new","New"],["read","Read"],["replied","Replied"],["all","All"]];
 const DS_TABS = [["registry","Registry","admins"],["reviews","Reviews","monitoring"],["corrections","Corrections","updates"],["recovery","Recovery","admins"]];
 const DS_FIELD_LABELS = {
   full_name:"Full name", first_name:"First name", second_name:"Second name", other_name:"Other name",
@@ -3268,6 +3446,7 @@ async function loadDsRecoveryList() {
 function render() {
   if (!motherAdmin) { renderLogin(); return; }
   dsCloseModal();
+  clearPvPoll();
   if (view === "settings") renderSettings();
   else if (view === "suspended") renderSuspendedPage();
   else if (view === "trash") renderTrashPage();
