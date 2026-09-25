@@ -815,22 +815,65 @@ async function pingDatabase() {
   return Math.round(performance.now() - start);
 }
 
+// School-side staff departments a push can be narrowed to. Every school has exactly these four;
+// "Administration" always receives every department-targeted push regardless of selection
+// (enforced server-side in _fanout_mother_notification), same as the existing per-school rule.
+const STAFF_DEPARTMENTS = [
+  ["administration", "Administration"],
+  ["academic", "Academic"],
+  ["finance", "Finance"],
+  ["parents", "Parents (liaison/PTA staff)"],
+];
+function deptPickerHtml(idPrefix) {
+  return `<div class="field">
+    <label><input type="checkbox" id="${idPrefix}All" checked style="width:auto;margin-right:6px;" />All departments</label>
+  </div>
+  <div id="${idPrefix}Picker" style="display:none;">
+    ${STAFF_DEPARTMENTS.map(([id, label]) => `<label style="display:block;font-size:13px;margin-bottom:4px;"><input type="checkbox" class="${idPrefix}Dept" value="${id}" style="width:auto;margin-right:6px;" />${label}</label>`).join("")}
+  </div>`;
+}
+function wireDeptPicker(idPrefix) {
+  const all = document.getElementById(`${idPrefix}All`);
+  const picker = document.getElementById(`${idPrefix}Picker`);
+  if (!all || !picker) return;
+  const render = () => { picker.style.display = all.checked ? "none" : "block"; };
+  all.onchange = render;
+  render();
+}
+function readDeptPicker(idPrefix) {
+  const all = document.getElementById(`${idPrefix}All`);
+  if (!all || all.checked) return null; // null = all departments
+  const picked = Array.from(document.querySelectorAll(`.${idPrefix}Dept:checked`)).map(cb => cb.value);
+  return picked.length ? picked : null;
+}
+
 async function listAnnouncements() { return mrpc("mother_list_announcements", { p_limit: 20 }); }
-async function sendAnnouncement({ title, body, targetAll, targetSchoolIds }) {
+async function sendAnnouncement({ title, body, targetAll, targetSchoolIds, targetDepartments }) {
   assertFullAccess();
-  return mrpc("mother_upsert_announcement", { p_id: null, p_title: title, p_body: body, p_target_all: !!targetAll, p_target_school_ids: targetAll ? null : targetSchoolIds });
+  return mrpc("mother_upsert_announcement", { p_id: null, p_title: title, p_body: body, p_target_all: !!targetAll, p_target_school_ids: targetAll ? null : targetSchoolIds, p_target_departments: targetDepartments || null });
 }
 async function deleteAnnouncement(id) { assertFullAccess(); return mrpc("mother_delete_announcement", { p_id: id }); }
 async function listSupportRequests(status) { return mrpc("mother_support_requests_named", { p_status: status || null }); }
 async function resolveSupportRequest(id) { assertFullAccess(); return mrpc("mother_resolve_support_request", { p_id: id }); }
 async function listChangelog() { return mrpc("mother_list_changelog", { p_limit: 20 }); }
-async function addChangelogEntry(title, description) {
+async function addChangelogEntry(title, description, targetDepartments) {
   assertFullAccess();
-  const res = await mrpc("mother_add_changelog_entry", { p_title: title, p_description: description || null });
+  const res = await mrpc("mother_add_changelog_entry", { p_title: title, p_description: description || null, p_target_departments: targetDepartments || null });
   logAudit("add_changelog", "changelog", null, title);
   return res;
 }
 async function deleteChangelogEntry(id) { assertFullAccess(); return mrpc("mother_delete_changelog_entry", { p_id: id }); }
+
+// ---- Feedback pushes: same targeting as announcements, plus per-school/staff responses ----
+async function listFeedbackRequests() { return mrpc("mother_list_feedback_requests", { p_limit: 20 }); }
+async function sendFeedbackRequest({ title, body, targetAll, targetSchoolIds, targetDepartments }) {
+  assertFullAccess();
+  const res = await mrpc("mother_send_feedback_request", { p_title: title, p_body: body, p_target_all: !!targetAll, p_target_school_ids: targetAll ? null : targetSchoolIds, p_target_departments: targetDepartments || null });
+  logAudit("send_feedback_request", "feedback_request", res?.id || null, title);
+  return res;
+}
+async function deleteFeedbackRequest(id) { assertFullAccess(); return mrpc("mother_delete_feedback_request", { p_id: id }); }
+async function listFeedbackResponses(feedbackRequestId) { return mrpc("mother_list_feedback_responses", { p_feedback_request_id: feedbackRequestId }); }
 async function listMaintenanceWindows() { return mrpc("mother_list_maintenance", { p_limit: 20 }); }
 async function scheduleMaintenance(startsAt, endsAt, message) {
   assertFullAccess();
@@ -2081,11 +2124,28 @@ async function renderComms() {
           <label><input type="checkbox" id="annAll" checked style="width:auto;margin-right:6px;" />Send to all schools</label>
         </div>
         <div id="annSchoolPicker" style="display:none;" class="tiny-note">Loading schools…</div>
+        <div class="tiny-note" style="margin-top:8px;">Departments this pops up for:</div>
+        ${deptPickerHtml("annDept")}
         <button class="btn btn-primary btn-sm" id="sendAnnBtn">Send</button>
       </div>
       <div class="card">
         <div class="section-title">Recent announcements</div>
         <div id="announceList" class="tiny-note">Loading…</div>
+      </div>
+      <div class="card">
+        <div class="section-title">Ask for feedback</div>
+        <div id="fbMsg"></div>
+        <div class="field"><label>Title</label><input id="fbTitle" /></div>
+        <div class="field"><label>Question / message</label><input id="fbBody" /></div>
+        <div class="field">
+          <label><input type="checkbox" id="fbAll" checked style="width:auto;margin-right:6px;" />Send to all schools</label>
+        </div>
+        <div id="fbSchoolPicker" style="display:none;" class="tiny-note">Loading schools…</div>
+        <div class="tiny-note" style="margin-top:8px;">Departments this pops up for:</div>
+        ${deptPickerHtml("fbDept")}
+        <button class="btn btn-primary btn-sm" id="sendFbBtn">Send feedback request</button>
+        <hr class="divider" />
+        <div id="feedbackList" class="tiny-note">Loading…</div>
       </div>
       <div class="card">
         <div class="section-title">Support requests</div>
@@ -2107,6 +2167,7 @@ async function renderComms() {
   }
   annAll.onchange = renderPicker;
   renderPicker();
+  wireDeptPicker("annDept");
 
   document.getElementById("sendAnnBtn").onclick = async () => {
     const msg = document.getElementById("announceMsg"); msg.innerHTML = "";
@@ -2114,17 +2175,85 @@ async function renderComms() {
     const body = document.getElementById("annBody").value.trim();
     const targetAll = annAll.checked;
     const targetSchoolIds = Array.from(document.querySelectorAll(".annSchool:checked")).map(cb => cb.value);
+    const targetDepartments = readDeptPicker("annDept");
     try {
       if (!title || !body) throw new Error("Enter a title and message.");
       if (!targetAll && !targetSchoolIds.length) throw new Error("Select at least one school, or send to all.");
-      await sendAnnouncement({ title, body, targetAll, targetSchoolIds });
+      await sendAnnouncement({ title, body, targetAll, targetSchoolIds, targetDepartments });
       msg.innerHTML = `<div class="msg-ok">Announcement sent.</div>`;
       document.getElementById("annTitle").value = ""; document.getElementById("annBody").value = "";
       loadAnnouncements();
     } catch(e) { msg.innerHTML = `<div class="err">${e.message}</div>`; }
   };
+
+  const fbAll = document.getElementById("fbAll");
+  const fbPicker = document.getElementById("fbSchoolPicker");
+  function renderFbPicker() {
+    fbPicker.style.display = fbAll.checked ? "none" : "block";
+    if (!fbAll.checked) {
+      fbPicker.innerHTML = allSchools.map(s => `<label style="display:block;font-size:13px;margin-bottom:4px;"><input type="checkbox" class="fbSchool" value="${s.id}" style="width:auto;margin-right:6px;" />${s.name}</label>`).join("") || `<div class="subtle">No schools yet.</div>`;
+    }
+  }
+  fbAll.onchange = renderFbPicker;
+  renderFbPicker();
+  wireDeptPicker("fbDept");
+
+  document.getElementById("sendFbBtn").onclick = async () => {
+    const msg = document.getElementById("fbMsg"); msg.innerHTML = "";
+    const title = document.getElementById("fbTitle").value.trim();
+    const body = document.getElementById("fbBody").value.trim();
+    const targetAll = fbAll.checked;
+    const targetSchoolIds = Array.from(document.querySelectorAll(".fbSchool:checked")).map(cb => cb.value);
+    const targetDepartments = readDeptPicker("fbDept");
+    try {
+      if (!title || !body) throw new Error("Enter a title and question.");
+      if (!targetAll && !targetSchoolIds.length) throw new Error("Select at least one school, or send to all.");
+      await sendFeedbackRequest({ title, body, targetAll, targetSchoolIds, targetDepartments });
+      msg.innerHTML = `<div class="msg-ok">Feedback request sent.</div>`;
+      document.getElementById("fbTitle").value = ""; document.getElementById("fbBody").value = "";
+      loadFeedbackRequests();
+    } catch(e) { msg.innerHTML = `<div class="err">${e.message}</div>`; }
+  };
+
   loadAnnouncements();
+  loadFeedbackRequests();
   loadSupportRequests();
+}
+async function loadFeedbackRequests() {
+  const el = document.getElementById("feedbackList");
+  if (!el) return;
+  try {
+    const items = await listFeedbackRequests();
+    if (!items.length) { el.innerHTML = `<div class="empty">No feedback requests sent yet.</div>`; return; }
+    el.innerHTML = items.map(f => `
+      <div class="admin-row" data-fbrow="${f.id}">
+        <div>
+          <div style="font-weight:700;">${f.title}</div>
+          <div class="tiny-note">${f.body}</div>
+          <div class="tiny-note">${f.target_all ? "All schools" : `${(f.target_school_ids||[]).length} school(s)`} · ${(f.target_departments||[]).length ? f.target_departments.join(", ") : "All departments"} · ${new Date(f.created_at).toLocaleDateString()}</div>
+          <div class="tiny-note" id="fbResponses_${f.id}">Tap "View responses" to load…</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          <button class="btn btn-ghost btn-sm" data-viewfb="${f.id}">View responses</button>
+          <button class="btn btn-danger btn-sm" data-delfb="${f.id}">Delete</button>
+        </div>
+      </div>`).join("");
+    el.querySelectorAll("[data-delfb]").forEach(btn => {
+      btn.onclick = async () => { await deleteFeedbackRequest(btn.dataset.delfb); loadFeedbackRequests(); };
+    });
+    el.querySelectorAll("[data-viewfb]").forEach(btn => {
+      btn.onclick = async () => {
+        const target = document.getElementById(`fbResponses_${btn.dataset.viewfb}`);
+        target.textContent = "Loading responses…";
+        try {
+          const responses = await listFeedbackResponses(btn.dataset.viewfb);
+          target.innerHTML = responses.length
+            ? responses.map(r => `<div style="margin-top:4px;"><strong>${r.school_name || "Unknown school"}</strong> — ${r.respondent_name || "Staff"}: ${r.response}</div>`).join("")
+            : "No responses yet.";
+        } catch(e) { target.textContent = e.message; }
+      };
+    });
+  } catch(e) { el.innerHTML = `<div class="err">${e.message}</div>`; }
 }
 async function loadAnnouncements() {
   const el = document.getElementById("announceList");
@@ -2176,6 +2305,8 @@ async function renderUpdates() {
         <div id="clMsg"></div>
         <div class="field"><label>Title</label><input id="clTitle" /></div>
         <div class="field"><label>Description (optional)</label><input id="clDesc" /></div>
+        <div class="tiny-note" style="margin-top:4px;">Departments this pops up for:</div>
+        ${deptPickerHtml("clDept")}
         <button class="btn btn-primary btn-sm" id="clAddBtn">Add entry</button>
         <hr class="divider" />
         <div id="clList" class="tiny-note">Loading…</div>
@@ -2204,14 +2335,16 @@ async function renderUpdates() {
     </div>`;
   wireTopBar();
   wireNavTabs();
+  wireDeptPicker("clDept");
 
   document.getElementById("clAddBtn").onclick = async () => {
     const msg = document.getElementById("clMsg"); msg.innerHTML = "";
     const title = document.getElementById("clTitle").value.trim();
     const desc = document.getElementById("clDesc").value.trim();
+    const targetDepartments = readDeptPicker("clDept");
     try {
       if (!title) throw new Error("Enter a title.");
-      await addChangelogEntry(title, desc);
+      await addChangelogEntry(title, desc, targetDepartments);
       document.getElementById("clTitle").value = ""; document.getElementById("clDesc").value = "";
       loadChangelog();
     } catch(e) { msg.innerHTML = `<div class="err">${e.message}</div>`; }
